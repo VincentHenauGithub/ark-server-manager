@@ -13,8 +13,10 @@ class Manager:
         def run():
             while not self.stop_event.is_set():
                 try:
+                    # print(f"\n\n=============== start {self.name} ===============")
                     self.process(interval)
                     time.sleep(interval)
+                    # print(f"=============== end {self.name} ===============")
                 except Exception as e:
                     print(f"Error in player {self.name}, stopping thread: {e}")
                     self.stop_event.set()

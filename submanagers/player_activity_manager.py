@@ -1,6 +1,6 @@
 from arkparse.api.rcon_api import RconApi, ActivePlayer
-from __manager import Manager
-from time_handler import TimeHandler, PreviousDate
+from .__manager import Manager
+from .time_handler import TimeHandler, PreviousDate
 
 class PlayerActivityManager(Manager):
     def __init__(self, rconapi: RconApi):
@@ -23,6 +23,9 @@ class PlayerActivityManager(Manager):
         self.increase_playtimes(current_players, self.prev_players, interval)
         self.grind_notifier(current_players)
         self.prev_players = current_players
+
+    def pr(self):
+        self.__process(1)
 
     def expose_players(self, p):
         players = self.rcon.get_active_players(p)

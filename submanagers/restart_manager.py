@@ -1,10 +1,10 @@
 import json
 
 from arkparse.api.rcon_api import RconApi
-from arkparse.ftp.ark_ftp_client import ArkFtpClient, INI
+from arkparse.ftp.ark_ftp_client import ArkFtpClient, INI, ArkMaps
 
-from time_handler import TimeHandler, PreviousDate
-from __manager import Manager
+from .time_handler import TimeHandler, PreviousDate
+from .__manager import Manager
 
 passwords = None
 with open("passwords.json", 'r') as pass_file:
@@ -30,11 +30,11 @@ RESTARTS = {
 }
 
 class RestartManager(Manager):
-    def __init__(self, rconapi: RconApi, ftpClient: ArkFtpClient):
+    def __init__(self, rconapi: RconApi, ftp_config: dict):
         super().__init__(self.__process, "restart manager")
         self.time_handler: TimeHandler = TimeHandler(RESTARTS["weekStartup"], RESTARTS["weekShutdown"], RESTARTS["weekendStartup"], RESTARTS["weekendShutdown"])
         self.rcon : RconApi = rconapi
-        self.ftp : ArkFtpClient = ftpClient
+        self.ftp : ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMaps.ABERRATION)
         self.wipe_on = ["Friday", "Monday"]
         self.restarts = RESTARTS.copy()
         self.last_timestamps = LAST_TIMESTAMPS.copy()
@@ -50,9 +50,13 @@ class RestartManager(Manager):
         self.restart_warning()
         self.wipe_dinos()
 
+    def stop(self):
+        super().stop()
+        self.ftp.close()
+
     def restart_warning(self):
         time_to = self.time_handler.time_until_next_restart()
-        last : PreviousDate = LAST_TIMESTAMPS["restart_ping"]
+        last : PreviousDate = self.last_timestamps["restart_ping"]
 
         if time_to == 0:
             if self.time_handler.is_next_restart_playable():
@@ -60,7 +64,7 @@ class RestartManager(Manager):
             else:
                 self.last_timestamps["close"] = PreviousDate()
 
-        if self.last_timestamps["restart_ping"] is not None and not last.is_new_minute():
+        if last is not None and not last.is_new_minute():
             return
 
         if time_to in self.warning_times:
