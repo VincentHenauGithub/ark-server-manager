@@ -19,6 +19,8 @@ restart_manager.start(INTERVAL)
 vote_manager.start(INTERVAL)
 
 if input("Press 'q' to quit\n").strip().lower() == 'q':
+    print("Quitting...")
+    FTP.close()
     activity_manager.stop()
     restart_manager.stop()
     vote_manager.stop()

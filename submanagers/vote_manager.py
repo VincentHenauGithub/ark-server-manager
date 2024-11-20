@@ -1,6 +1,5 @@
 from arkparse.api.rcon_api import RconApi
-
-from .__manager import Manager
+from __manager import Manager
 
 class VoteManager(Manager):
 

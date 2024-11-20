@@ -1,7 +1,6 @@
 from arkparse.api.rcon_api import RconApi, ActivePlayer
-from .__manager import Manager
-
-from .time_handler import TimeHandler, PreviousDate
+from __manager import Manager
+from time_handler import TimeHandler, PreviousDate
 
 class PlayerActivityManager(Manager):
     def __init__(self, rconapi: RconApi):

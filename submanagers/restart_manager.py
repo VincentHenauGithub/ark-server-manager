@@ -3,8 +3,8 @@ import json
 from arkparse.api.rcon_api import RconApi
 from arkparse.ftp.ark_ftp_client import ArkFtpClient, INI
 
-from .time_handler import TimeHandler, PreviousDate
-from .__manager import Manager
+from time_handler import TimeHandler, PreviousDate
+from __manager import Manager
 
 passwords = None
 with open("passwords.json", 'r') as pass_file:
