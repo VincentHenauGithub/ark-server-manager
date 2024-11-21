@@ -35,6 +35,7 @@ class RestartManager(Manager):
         self.time_handler: TimeHandler = TimeHandler(RESTARTS["weekStartup"], RESTARTS["weekShutdown"], RESTARTS["weekendStartup"], RESTARTS["weekendShutdown"])
         self.rcon : RconApi = rconapi
         self.ftp : ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMaps.ABERRATION)
+        self.ftp.close()
         self.wipe_on = ["Friday", "Monday"]
         self.restarts = RESTARTS.copy()
         self.last_timestamps = LAST_TIMESTAMPS.copy()
@@ -75,7 +76,9 @@ class RestartManager(Manager):
             if time_to == 60:
                 print("Changing server password")
                 new_pass = self.open_password if self.time_handler.is_next_restart_playable() else self.secret_password
+                self.ftp.connect()
                 self.ftp.change_ini_setting("ServerPassword", new_pass, INI.GAME_USER_SETTINGS)
+                self.ftp.close()
                 print("Server password changed to ", new_pass)
 
     def wipe_dinos(self):

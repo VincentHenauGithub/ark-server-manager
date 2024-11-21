@@ -39,14 +39,17 @@ class RandomStatManager(Manager):
         super().__init__(self.__process, "random stat manager")
         self.previous_save: ArkFile = None
         self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMaps.ABERRATION)
-        self.player_api: PlayerApi = PlayerApi(self.ftp_client)
+        self.player_api: PlayerApi = PlayerApi(ftp_config, ArkMaps.ABERRATION)
         self.rcon: RconApi = rconapi
 
     def stop(self):
         super().stop()
+        self.player_api.dispose()
         self.ftp_client.close()
 
     def __process(self, interval: int):
+        self.ftp_client.connect()
+        
         save_file_info : ArkFile = self.ftp_client.check_save_file()[0]
 
         if self.previous_save is None or save_file_info.is_newer_than(self.previous_save):
@@ -79,6 +82,7 @@ class RandomStatManager(Manager):
             STATS["nrOfTurrets"] = structure_api.get_response_total_count(structure_api.get_by_class(PlacedStructures.turrets.all_bps))
 
         self.rcon.send_message(self.get_random_stat(STATS))
+        self.ftp_client.close()
 
     def get_random_stat(self, STATS):
         """
