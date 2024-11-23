@@ -1,5 +1,7 @@
 from pathlib import Path
-import json
+import datetime
+import time
+import keyboard
 
 from arkparse.api.rcon_api import RconApi, PlayerDataFiles
 from submanagers.player_activity_manager import PlayerActivityManager
@@ -23,9 +25,23 @@ restart_manager.start(INTERVAL)
 vote_manager.start(INTERVAL)
 rs_manager.start(1020)
 
-if input("Press 'q' to quit\n").strip().lower() == 'q':
-    print("Quitting...")
-    
+t = 0
+
+try:
+    while True:
+        if keyboard.is_pressed('ctrl+q'):
+            print("Quitting...")
+            activity_manager.stop()
+            restart_manager.stop()
+            vote_manager.stop()
+            rs_manager.stop()
+            break
+        if t % 300 == 0:
+            print(f"{datetime.datetime.now()}: Main thread running")
+        time.sleep(1)
+        t += 1
+except KeyboardInterrupt:
+    print("Interrupted by user")
     activity_manager.stop()
     restart_manager.stop()
     vote_manager.stop()
