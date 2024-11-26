@@ -31,6 +31,19 @@ STATS = {
     "nrOfTekStructures" : None,
     "nrOfStoneStructures" : None,
     "nrOfTurrets" : None,
+    # "nrOfWildDinosWithStatsOver35": None,
+    # "nrOfWildDinosWithStatsOver40": None,
+    # "nrOfTamedDinosWithBaseStatsOver45": None,
+    # "nrOfTamedDinosWithBaseStatsOver50": None,
+    # "highestWildDinoHealthStat": None,
+    # "highestWildDinoDamageStat": None,
+    # "highestWildDinoOxygenStat": None,
+    # "highestTamedDinoHealthStat": None,
+    # "highestTamedDinoDamageStat": None,
+    # "highestTamedDinoOxygenStat": None,
+    # "higestArmorSaddle": None,
+    # "nrOfMaxArmorSaddles": None,
+    # "highestDamageWeapon": None,
 }
 
 class RandomStatManager(Manager):
