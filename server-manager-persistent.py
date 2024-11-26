@@ -25,5 +25,9 @@ vote_manager.start(INTERVAL)
 rs_manager.start(1020)
 
 while True:
-    print(f"{datetime.datetime.now()}: Main thread running")
+    print(f"\n{datetime.datetime.now()}: Main thread running")
+    print(f"Activity Manager Thread Alive: {activity_manager.is_alive()}")
+    print(f"Restart Manager Thread Alive: {restart_manager.is_alive()}")
+    print(f"Vote Manager Thread Alive: {vote_manager.is_alive()}")
+    print(f"Random Stat Manager Thread Alive: {rs_manager.is_alive()}")
     time.sleep(300)

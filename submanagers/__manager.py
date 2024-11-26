@@ -31,3 +31,6 @@ class Manager:
             self.stop_event.set()
             self.thread.join()
             self.thread = None
+
+    def is_alive(self):
+        return self.thread is not None and self.thread.is_alive()

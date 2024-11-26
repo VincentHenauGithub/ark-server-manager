@@ -25,6 +25,9 @@ class VoteManager(Manager):
         self.stop_vote_count.set()
         self.vote_count_down_thread.join()
 
+    def is_alive(self):
+        return super().is_alive() and self.vote_count_down_thread.is_alive()
+
     def __check_for_vote(self, message: GameLogEntry):
         if message.type == message.EntryType.PLAYER:
             player = message.get_player_chat_name()
