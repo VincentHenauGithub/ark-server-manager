@@ -59,7 +59,7 @@ class RandomStatManager(Manager):
         super().stop()
         self.player_api.dispose()
         self.ftp_client.close()
-
+        
     def __process(self, interval: int):
         self.ftp_client.connect()
         
@@ -76,12 +76,12 @@ class RandomStatManager(Manager):
             structure_api = StructureApi(save)
 
             STATS["nrOfDinosOnMap"] = len(dino_api.get_all_wild())
-            STATS["nrOfLv150"] = len(dino_api.get_all_filtered(150, 150, None, False))
+            STATS["nrOfLv150"] = len(dino_api.get_all_filtered(150, 150, None, tamed=False, include_cryopodded=False))
             STATS["nrOfAlphas"] = len(dino_api.get_all_wild_by_class([Dinos.alpha_karkinos, Dinos.alpha_reaper_king, Dinos.alpha_basilisk]))
             STATS["isThereAlphaReaper"] = len(dino_api.get_all_wild_by_class([Dinos.alpha_reaper_king])) > 0
             STATS["isThereAlphaBasilisk"] = len(dino_api.get_all_wild_by_class([Dinos.alpha_basilisk])) > 0
             STATS["isThereAlphaKark"] = len(dino_api.get_all_wild_by_class([Dinos.alpha_karkinos])) > 0
-            STATS["nrOfReapersAbove130"] = len(dino_api.get_all_filtered(130, None, Dinos.reaper_queen, False))
+            STATS["nrOfReapersAbove130"] = len(dino_api.get_all_filtered(130, None, Dinos.reaper_queen, False, include_cryopodded=False))
             STATS["nrOfDodos"] = len(dino_api.get_all_wild_by_class([Dinos.abberant.dodo]))
             STATS["nrOfDeaths"] = self.player_api.get_deaths()
             STATS["combinedLevel"] = self.player_api.get_level()
