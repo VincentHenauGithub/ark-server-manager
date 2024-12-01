@@ -1,4 +1,4 @@
-from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkFile, ArkMaps
+from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkFile, FtpArkMap
 from pathlib import Path
 from arkparse.api.dino_api import DinoApi
 from arkparse.api.player_api import PlayerApi
@@ -51,8 +51,8 @@ class RandomStatManager(Manager):
     def __init__(self, ftp_config: ArkFtpClient, rconapi: RconApi):
         super().__init__(self.__process, "random stat manager")
         self.previous_save: ArkFile = None
-        self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMaps.ABERRATION)
-        self.player_api: PlayerApi = PlayerApi(ftp_config, ArkMaps.ABERRATION)
+        self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(ftp_config, FtpArkMap.ABERRATION)
+        self.player_api: PlayerApi = PlayerApi(ftp_config, FtpArkMap.ABERRATION)
         self.rcon: RconApi = rconapi
 
     def stop(self):
