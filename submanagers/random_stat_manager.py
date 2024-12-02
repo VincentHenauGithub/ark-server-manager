@@ -82,6 +82,9 @@ class RandomStatManager(Manager):
         super().stop()
         self.player_api.dispose()
         self.ftp_client.close()
+
+    def testprocess(self):
+        self.__process(1)
         
     def __process(self, interval: int):
         self.ftp_client.connect()
@@ -91,7 +94,7 @@ class RandomStatManager(Manager):
         if self.previous_save is None or save_file_info.is_newer_than(self.previous_save):
             print("New save file detected, downloading...")
             self.previous_save = save_file_info
-            save_path = self.ftp_client.download_save_file("Aberration_WP.ark", Path.cwd())
+            save_path = self.ftp_client.download_save_file(Path.cwd())
 
             print("Parsing files...")
             save = AsaSave(save_path)

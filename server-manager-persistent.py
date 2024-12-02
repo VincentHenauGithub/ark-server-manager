@@ -24,6 +24,9 @@ restart_manager.start(INTERVAL)
 vote_manager.start(INTERVAL)
 rs_manager.start(1020)
 
+# rs_manager.testprocess()
+# time.sleep(100)
+
 while True:
     print(f"\n{datetime.datetime.now()}: Main thread running")
     print(f"Activity Manager Thread Alive: {activity_manager.is_alive()}")

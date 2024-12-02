@@ -23,9 +23,8 @@ class VoteManager(Manager):
     def __init__(self, rconapi: RconApi, ftp_config: dict):
         super().__init__(self.__process, "vote manager")
         self.rcon : RconApi = rconapi
-        self.ftp : ArkFtpClient = ArkFtpClient.from_config(ftp_config, FtpArkMap.ABERRATION)
-        self.player_votes = {}
-        self.tribe_votes = {}
+        self.log_handle = self.rcon.subscribe()
+        self.current_votes = {}
         self.vote_type = None
         self.vote_time_left = 0
         self.stop_vote_count = threading.Event()
