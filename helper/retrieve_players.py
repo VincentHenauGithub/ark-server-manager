@@ -1,8 +1,9 @@
 import json
 import argparse
 import os
+from pathlib import Path
 
-from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkMaps
+from arkparse.ftp.ark_ftp_client import FtpArkMap
 from arkparse.api.player_api import PlayerApi
 from arkparse.objects.player.ark_profile import ArkProfile
 
@@ -10,8 +11,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument("--reset_playtime", action="store_true")
 args = argparser.parse_args()
 
-FTP = ArkFtpClient.from_config("../ftp_config.json", ArkMaps.ABERRATION)
-PLAYER_API = PlayerApi(FTP)
+PLAYER_API = PlayerApi(Path("../ftp_config.json"), FtpArkMap.ABERRATION)
 
 # Get real life names
 players = {}
