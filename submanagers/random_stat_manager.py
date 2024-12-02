@@ -1,4 +1,4 @@
-from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkFile, ArkMaps
+from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkFile, FtpArkMap
 from pathlib import Path
 from arkparse.api.dino_api import DinoApi
 from arkparse.api.player_api import PlayerApi
@@ -31,6 +31,19 @@ STATS = {
     "nrOfTekStructures" : None,
     "nrOfStoneStructures" : None,
     "nrOfTurrets" : None,
+    # "nrOfWildDinosWithStatsOver35": None,
+    # "nrOfWildDinosWithStatsOver40": None,
+    # "nrOfTamedDinosWithBaseStatsOver45": None,
+    # "nrOfTamedDinosWithBaseStatsOver50": None,
+    # "highestWildDinoHealthStat": None,
+    # "highestWildDinoDamageStat": None,
+    # "highestWildDinoOxygenStat": None,
+    # "highestTamedDinoHealthStat": None,
+    # "highestTamedDinoDamageStat": None,
+    # "highestTamedDinoOxygenStat": None,
+    # "higestArmorSaddle": None,
+    # "nrOfMaxArmorSaddles": None,
+    # "highestDamageWeapon": None,
 }
 
 class RandomStatManager(Manager):
@@ -38,15 +51,15 @@ class RandomStatManager(Manager):
     def __init__(self, ftp_config: ArkFtpClient, rconapi: RconApi):
         super().__init__(self.__process, "random stat manager")
         self.previous_save: ArkFile = None
-        self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMaps.ABERRATION)
-        self.player_api: PlayerApi = PlayerApi(ftp_config, ArkMaps.ABERRATION)
+        self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(ftp_config, FtpArkMap.ABERRATION)
+        self.player_api: PlayerApi = PlayerApi(ftp_config, FtpArkMap.ABERRATION)
         self.rcon: RconApi = rconapi
 
     def stop(self):
         super().stop()
         self.player_api.dispose()
         self.ftp_client.close()
-
+        
     def __process(self, interval: int):
         self.ftp_client.connect()
         
@@ -63,12 +76,12 @@ class RandomStatManager(Manager):
             structure_api = StructureApi(save)
 
             STATS["nrOfDinosOnMap"] = len(dino_api.get_all_wild())
-            STATS["nrOfLv150"] = len(dino_api.get_all_filtered(150, 150, None, False))
+            STATS["nrOfLv150"] = len(dino_api.get_all_filtered(150, 150, None, tamed=False, include_cryopodded=False))
             STATS["nrOfAlphas"] = len(dino_api.get_all_wild_by_class([Dinos.alpha_karkinos, Dinos.alpha_reaper_king, Dinos.alpha_basilisk]))
             STATS["isThereAlphaReaper"] = len(dino_api.get_all_wild_by_class([Dinos.alpha_reaper_king])) > 0
             STATS["isThereAlphaBasilisk"] = len(dino_api.get_all_wild_by_class([Dinos.alpha_basilisk])) > 0
             STATS["isThereAlphaKark"] = len(dino_api.get_all_wild_by_class([Dinos.alpha_karkinos])) > 0
-            STATS["nrOfReapersAbove130"] = len(dino_api.get_all_filtered(130, None, Dinos.reaper_queen, False))
+            STATS["nrOfReapersAbove130"] = len(dino_api.get_all_filtered(130, None, Dinos.reaper_queen, False, include_cryopodded=False))
             STATS["nrOfDodos"] = len(dino_api.get_all_wild_by_class([Dinos.abberant.dodo]))
             STATS["nrOfDeaths"] = self.player_api.get_deaths()
             STATS["combinedLevel"] = self.player_api.get_level()
