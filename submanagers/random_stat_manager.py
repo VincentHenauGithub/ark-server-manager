@@ -3,14 +3,36 @@ from pathlib import Path
 from arkparse.api.dino_api import DinoApi
 from arkparse.api.player_api import PlayerApi
 from arkparse.api.rcon_api import RconApi
+from arkparse.api.stackable_api import StackableApi
 from arkparse.api.structure_api import StructureApi
 from arkparse.objects.saves.asa_save import AsaSave
 from arkparse.classes.dinos import Dinos
+from arkparse.classes.resources import Resources
 from arkparse.classes.placed_structures import PlacedStructures
 import random
 
 from .__manager import Manager
 
+RESOURCES = {
+    "wood": Resources.Basic.wood,
+    "stone": Resources.Basic.stone,
+    "obsidian": Resources.Basic.obsidian,
+    "crystal": Resources.Basic.crystal,
+    "oil": Resources.Basic.oil,
+    "organic polymer": Resources.Basic.polymer_organic,
+    "black_pearl": Resources.Basic.black_pearl,
+    "cementing_paste": Resources.Crafted.chitin_paste,
+    "hide": Resources.Basic.hide,
+    "fiber": Resources.Basic.fiber,
+    "keratin": Resources.Basic.keratin,
+    "chitin": Resources.Basic.chitin,
+    "charcoal": Resources.Crafted.charcoal,
+    "flint": Resources.Basic.flint,
+    "thatch": Resources.Basic.thatch,
+    "metal ingot": Resources.Crafted.metal_ingot,
+    "electronics": Resources.Crafted.electronics,
+    "pelt": Resources.Basic.pelt,
+}
 
 STATS = {
     "nrOfDinosOnMap" : None,
@@ -23,7 +45,6 @@ STATS = {
     "nrOfDodos" : None,
     "nrOfDeaths" : None,
     "combinedLevel" : None,
-    # "amountOfResource" : None,
     "nrOfTamedDinos" : None,
     "highestDeaths" : None,
     "highestLevel" : None,
@@ -31,6 +52,8 @@ STATS = {
     "nrOfTekStructures" : None,
     "nrOfStoneStructures" : None,
     "nrOfTurrets" : None,
+    "randomResourceName" : None,
+    "randomResourceAmount" : None,
     # "nrOfWildDinosWithStatsOver35": None,
     # "nrOfWildDinosWithStatsOver40": None,
     # "nrOfTamedDinosWithBaseStatsOver45": None,
@@ -74,6 +97,9 @@ class RandomStatManager(Manager):
             save = AsaSave(save_path)
             dino_api = DinoApi(save)
             structure_api = StructureApi(save)
+            stackable_api = StackableApi(save)
+            STATS["randomResourceName"] = RESOURCES.keys()[random.randint(0, len(RESOURCES.keys()) - 1)]
+            STATS["randomResourceAmount"] = stackable_api.get_count(stackable_api.get_by_class(StackableApi.Classes.RESOURCE, [RESOURCES[STATS["randomResourceName"]]]))
 
             STATS["nrOfDinosOnMap"] = len(dino_api.get_all_wild())
             STATS["nrOfLv150"] = len(dino_api.get_all_filtered(150, 150, None, tamed=False, include_cryopodded=False))
@@ -89,15 +115,37 @@ class RandomStatManager(Manager):
             STATS["nrOfTamedDinos"] = len(dino_api.get_all_tamed())
             STATS["highestDeaths"] = self.player_api.get_player_with(PlayerApi.Stat.DEATHS, PlayerApi.StatType.HIGHEST)
             STATS["highestLevel"] = self.player_api.get_player_with(PlayerApi.Stat.LEVEL, PlayerApi.StatType.HIGHEST)
-            STATS["nrOfMetalStructures"] = structure_api.get_response_total_count(structure_api.get_by_class(PlacedStructures.metal.all_bps))
-            STATS["nrOfTekStructures"] = structure_api.get_response_total_count(structure_api.get_by_class(PlacedStructures.tek.all_bps))
-            STATS["nrOfStoneStructures"] = structure_api.get_response_total_count(structure_api.get_by_class(PlacedStructures.stone.all_bps))
-            STATS["nrOfTurrets"] = structure_api.get_response_total_count(structure_api.get_by_class(PlacedStructures.turrets.all_bps))
+            STATS["nrOfMetalStructures"] = len(structure_api.get_by_class(PlacedStructures.metal.all_bps))
+            STATS["nrOfTekStructures"] = len(structure_api.get_by_class(PlacedStructures.tek.all_bps))
+            STATS["nrOfStoneStructures"] = len(structure_api.get_by_class(PlacedStructures.stone.all_bps))
+            STATS["nrOfTurrets"] = len(structure_api.get_by_class(PlacedStructures.turrets.all_bps))
 
-        self.rcon.send_message(self.get_random_stat(STATS))
+        self.rcon.send_message(self.get_random_stat())
         self.ftp_client.close()
 
-    def get_random_stat(self, STATS):
+    def get_random_alpha_stat(self):
+        def craft_string(name, stat):
+            return f"Is there an alpha {name}? Survey says... {'YESS!!' if {stat} else 'Nope! (at least not yet)'}"
+
+        options = [
+            lambda: (craft_string("reaper", STATS.get('isThereAlphaReaper', False))),
+            lambda: (craft_string("basilisk", STATS.get('isThereAlphaBasilisk', False))),
+            lambda: (craft_string("karkinos", STATS.get('isThereAlphaKark', False))),
+        ]
+        
+        # Generate all possible messages
+        all_messages = [option() for option in options]
+        
+        # Filter out any empty strings
+        valid_messages = [msg for msg in all_messages if msg]
+        
+        if not valid_messages:
+            return "No valid alpha statistics available to display."
+        
+        # Randomly select and return one of the valid messages
+        return random.choice(valid_messages)
+
+    def get_random_stat(self):
         """
         Randomly selects and returns one of the statistics from the STATS dictionary as a string.
         
@@ -119,18 +167,7 @@ class RandomStatManager(Manager):
                 else "No alphas on the map :("
             ),
             
-            lambda: (
-                f"Is there an alpha reaper? Survey says... {'YESS!!' if STATS.get('isThereAlphaReaper', False) else 'Nope! (at least not yet)'}"
-            ),
-            
-            lambda: (
-                f"Is there an alpha basilisk? Survey says... {'YESS!!' if STATS.get('isThereAlphaBasilisk', False) else 'Nope! (at least not yet)'}"
-            ),
-            
-            lambda: (
-                f"Is there an alpha karkinos? Survey says... {'YESS!!' if STATS.get('isThereAlphaKark', False) else 'Nope! (at least not yet)'}"
-            ),
-            
+            self.get_random_alpha_stat,
             lambda: (
                 f"There are {STATS.get('nrOfReapersAbove130', 0)} reapers above level 130, might be a good idea to track one down!"
                 if STATS.get('nrOfReapersAbove130', 0) > 0
@@ -178,7 +215,7 @@ class RandomStatManager(Manager):
                 if STATS.get('nrOfStoneStructures', 0) > 0
                 else ""
             ),
-            
+            lambda: f"We gathered {STATS.get('randomResourceAmount', 0)} units of {STATS.get('randomResourceName', 0)}",
             lambda: (
                 "Not a single turret on the map, smoooooth sailing"
                 if STATS.get('nrOfTurrets', 0) == 0
