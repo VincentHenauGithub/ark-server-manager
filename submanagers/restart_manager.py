@@ -1,7 +1,7 @@
 import json
 
 from arkparse.api.rcon_api import RconApi
-from arkparse.ftp.ark_ftp_client import ArkFtpClient, INI, ArkMaps
+from arkparse.ftp.ark_ftp_client import ArkFtpClient, INI, FtpArkMap
 
 from .time_handler import TimeHandler, PreviousDate
 from .__manager import Manager
@@ -34,7 +34,7 @@ class RestartManager(Manager):
         super().__init__(self.__process, "restart manager")
         self.time_handler: TimeHandler = TimeHandler(RESTARTS["weekStartup"], RESTARTS["weekShutdown"], RESTARTS["weekendStartup"], RESTARTS["weekendShutdown"])
         self.rcon : RconApi = rconapi
-        self.ftp : ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMaps.ABERRATION)
+        self.ftp : ArkFtpClient = ArkFtpClient.from_config(ftp_config, FtpArkMap.ABERRATION)
         self.ftp.close()
         self.wipe_on = ["Friday", "Monday"]
         self.restarts = RESTARTS.copy()
