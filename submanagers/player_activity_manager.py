@@ -46,7 +46,7 @@ class PlayerActivityManager(Manager):
             message += p.get_name() + ", "
 
         self.rcon.send_message(message.strip(" ").strip(","))
-        print(message)
+        self._print(message)
         self.last_active_ts = PreviousDate()
 
         return players

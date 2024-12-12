@@ -27,7 +27,7 @@ class TimeHandler:
         
         if self.is_weekend():
             # Special case for Sunday: follow weekday schedule
-            if current_day == 'Sunday':
+            if current_day == 'Sunday' and self._minutes_until_we_shutdown() > 120:
                 if self._minutes_until_we_startup() < self._minutes_until_wd_shutdown():
                     return self._minutes_until_we_startup()
                 else:
@@ -57,7 +57,7 @@ class TimeHandler:
         
         if self.is_weekend():
             # Special case for Sunday: follow weekday schedule
-            if current_day == 'Sunday':
+            if current_day == 'Sunday' and self._minutes_until_we_shutdown() > 120:
                 return self._minutes_until_we_startup() < self._minutes_until_wd_shutdown()
             # Standard weekend case
             else:

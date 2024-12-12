@@ -45,8 +45,8 @@ class RestartManager(Manager):
 
     def __process(self, interval: int):
         last_print: PreviousDate = LAST_TIMESTAMPS["print"]
-        if (last_print is None or last_print.is_new_minute()) and self.time_handler.is_quarter_hour():
-            print("Next restart in: ", self.time_handler.time_until_next_restart(), " minutes ", "(", "{:.2f}".format(self.time_handler.time_until_next_restart() / 60), " hours); next restart is playable:", "Yes" if  self.time_handler.is_next_restart_playable() else "No")
+        if last_print is None or (last_print.is_new_minute() and self.time_handler.is_quarter_hour()):
+            self._print(f"Next restart in: {self.time_handler.time_until_next_restart()} minutes ({self.time_handler.time_until_next_restart() / 60:.2f} hours); next restart is playable: {'Yes' if self.time_handler.is_next_restart_playable() else 'No'}")
             LAST_TIMESTAMPS["print"] = PreviousDate()    
         self.restart_warning()
         self.wipe_dinos()
@@ -69,17 +69,17 @@ class RestartManager(Manager):
             return
 
         if time_to in self.warning_times:
-            print("Sending restart warning")
+            self._print("Sending restart warning")
             self.rcon.send_message(f"Server will shut down in {time_to} minutes!")
             self.last_timestamps["restart_ping"] = PreviousDate()
 
             if time_to == 60:
-                print("Changing server password")
+                self._print("Changing server password")
                 new_pass = self.open_password if self.time_handler.is_next_restart_playable() else self.secret_password
                 self.ftp.connect()
                 self.ftp.change_ini_setting("ServerPassword", new_pass, INI.GAME_USER_SETTINGS)
                 self.ftp.close()
-                print("Server password changed to ", new_pass)
+                self._print(f"Server password changed to {new_pass}")
 
     def wipe_dinos(self):
         last_close : PreviousDate = self.last_timestamps["close"]

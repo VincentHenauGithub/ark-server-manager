@@ -8,8 +8,12 @@ class Manager:
         self.name = name
         self.process = process
 
+    def _print(self, message):
+        current_time = time.strftime("%H:%M:%S", time.localtime())
+        print(f"[{current_time}][{self.name}] {message}")
+
     def start(self, interval: int):
-        print(f"Starting {self.name}")
+        self._print(f"Starting {self.name}")
         def run():
             while not self.stop_event.is_set():
                 try:
@@ -19,7 +23,7 @@ class Manager:
                             break
                         time.sleep(1)
                 except Exception as e:
-                    print(f"Error in player {self.name}, stopping thread: {e}")
+                    self._print(f"Error, stopping thread: {e}")
                     self.stop_event.set()
 
         self.stop_event = threading.Event()

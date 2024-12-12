@@ -74,25 +74,29 @@ class VoteManager(Manager):
         response = self.rcon.get_new_entries(self.log_handle)
 
         if response and len(response):
-            print("\nNew log messages:")
+            self._print("New log messages:")
             for entry in response:
-                print(entry)
+                self._print(entry)
                 self.__check_for_vote(entry)
 
                 if entry.message == "!StartTestVote":
                     self.start_vote("Test", 30)
 
-                elif entry.type == entry.EntryType.CHAT and entry.message.startswith("[BOT] Is there an alpha "):
+                elif entry.type == entry.EntryType.GAME and entry.message.startswith("[BOT] Is there an alpha "):
                     vote_t = entry.message.split("[BOT] Is there an alpha ")[1].split("?")[0]
                     self.start_vote(vote_t, 60)
+
+                # elif entry.type == entry.EntryType.GAME and entry.message.startswith("The highest ") and 'wild' in entry.message:
+                #     vote_t = "Dino hunt"
+                #     self.start_vote(vote_t, 60)
 
                 elif entry.message.startswith("!AdminAlpha!"):
                     vote_t = entry.message.split("!")[-1]
                     self.start_vote(vote_t, 60)
 
-            # print("\nFull log:")
+            # self._print("\nFull log:")
             # for entry in self.rcon.game_log:
-            #     print(entry)
+            #     self._print(entry)
 
     def __count_votes(self):
         yes_votes = 0
@@ -160,6 +164,7 @@ class VoteManager(Manager):
         if len(dinos.keys()):
             dino = list(dinos.values())[0]
             self.rcon.send_message(f"Vote passed! Alpha {self.vote_type} found at {dino.location.as_map_coords(ArkMap.ABERRATION)}")
+            
 
     def handle_vote_result(self):
         yes_votes, no_votes, tribes = self.__count_votes()
