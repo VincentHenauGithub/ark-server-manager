@@ -1,4 +1,4 @@
-from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkFile, FtpArkMap
+from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkFile, ArkMap
 from pathlib import Path
 from typing import Dict
 from uuid import UUID
@@ -10,12 +10,12 @@ from arkparse.api.stackable_api import StackableApi
 from arkparse.api.structure_api import StructureApi
 from arkparse.api.equipment_api import EquipmentApi
 
-from arkparse.objects.saves.game_objects.dinos.dino import Dino
-from arkparse.objects.saves.game_objects.dinos.tamed_dino import TamedDino
-from arkparse.objects.saves.game_objects.equipment.saddle import Saddle
-from arkparse.objects.saves.game_objects.equipment.weapon import Weapon
+from arkparse.object_model.dinos.dino import Dino
+from arkparse.object_model.dinos.tamed_dino import TamedDino
+from arkparse.object_model.equipment.saddle import Saddle
+from arkparse.object_model.equipment.weapon import Weapon
 
-from arkparse.objects.saves.asa_save import AsaSave
+from arkparse import AsaSave
 from arkparse.enums import ArkMap, ArkStat
 from arkparse.classes.dinos import Dinos
 from arkparse.classes.resources import Resources
@@ -91,8 +91,8 @@ class RandomStatManager(Manager):
         super().__init__(self.__process, "random stat manager")
         self.ftp_config = ftp_config
         self.previous_save: ArkFile = None
-        self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(ftp_config, FtpArkMap.ABERRATION)
-        self.player_api: PlayerApi = PlayerApi(ftp_config, FtpArkMap.ABERRATION)
+        self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMap.ABERRATION)
+        self.player_api: PlayerApi = PlayerApi(ftp_config, ArkMap.ABERRATION)
         self.rcon: RconApi = rconapi
         self.dino_api = None
 
@@ -107,7 +107,7 @@ class RandomStatManager(Manager):
         
     def __process(self, interval: int):
         if self.ftp_client is None:
-            self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(self.ftp_config, FtpArkMap.ABERRATION)
+            self.ftp_client: ArkFtpClient = ArkFtpClient.from_config(self.ftp_config, ArkMap.ABERRATION)
 
         self.ftp_client.connect()
         
@@ -283,9 +283,6 @@ class RandomStatManager(Manager):
                 if STATS.get('nrOfReapersAbove130', 0) > 0
                 else "Not a single reaper queens above 130 spotted, wtffffff"
             ),
-            
-            lambda: f"There are {STATS.get('nrOfDodos', 0)} dodos, c4 dodo raid?",
-            
             lambda: f"There have been {STATS.get('nrOfDeaths', 0)} deaths, RIP!",
             
             lambda: f"Our combined level is {STATS.get('combinedLevel', 0)}, APES TOGETHER STRONG!",
@@ -301,11 +298,15 @@ class RandomStatManager(Manager):
                 else ""
             ),
             lambda: (
-                f"{STATS['highestDeaths'][0].player_data.name} has the most deaths: {STATS['highestDeaths'][1]}.. Git gud, scrub!"
+                f"{STATS['highestDeaths'][0].name} has the most deaths: {STATS['highestDeaths'][1]}.. Git gud, scrub!"
                 if 'highestDeaths' in STATS and STATS['highestDeaths']
                 else ""
             ),
-            
+            lambda: (
+                f"{STATS['highestLevel'][0].name} is the highest level player: {STATS['highestLevel'][1]}, take a break buddy!"
+                if 'highestLevel' in STATS and STATS['highestLevel']
+                else ""
+            ),
             self.get_random_structure_number_message,
             lambda: f"We gathered {STATS.get('randomResourceAmount', 0)} units of {STATS.get('randomResourceName', 0)}",
             lambda: (

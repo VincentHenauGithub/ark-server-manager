@@ -94,6 +94,14 @@ class TimeHandler:
     def is_day(self, day: str):
         return self._get_current_day().lower() == day.lower()
     
+    def is_hour(self, hour: int = None):
+        if hour is None:
+            return time.localtime().tm_min == 0
+        return time.localtime().tm_hour == hour and time.localtime().tm_min == 0
+    
+    def is_half_hour(self):
+        return time.localtime().tm_min == 30
+    
     def is_day_of_list(self, days):
         return self._get_current_day().lower() in [d.lower() for d in days]
     
