@@ -8,10 +8,9 @@ from submanagers.restart_manager import RestartManager
 from submanagers.vote_manager import VoteManager
 from submanagers.random_stat_manager import RandomStatManager
 from submanagers.raid_base_manager import RaidBaseManager
-from arkparse.logging import ArkSaveLogger
 
 INTERVAL = 1
-RCON : RconApi = RconApi.from_config("rcon_config.json")
+RCON: RconApi = RconApi.from_config("rcon_config.json")
 FTP_CONF = "ftp_config.json"
 
 PlayerDataFiles.set_files(players_files_path=Path("players.json"))
@@ -19,7 +18,6 @@ PlayerDataFiles.set_files(players_files_path=Path("players.json"))
 activity_manager = PlayerActivityManager(RCON)
 restart_manager = RestartManager(RCON, FTP_CONF)
 vote_manager = VoteManager(RCON, FTP_CONF)
-# ArkSaveLogger.enable_debug = True
 rs_manager = RandomStatManager(FTP_CONF, RCON)
 rb_manager = RaidBaseManager(RCON, FTP_CONF, Path.cwd() / "bases")
 
@@ -33,9 +31,11 @@ vote_manager.start(INTERVAL)
 rs_manager.start(600)
 rb_manager.start(60)
 
+
 def _print(message):
-        current_time = time.strftime("%H:%M:%S", time.localtime())
-        print(f"[{current_time}][main thread] {message}")
+    current_time = time.strftime("%H:%M:%S", time.localtime())
+    print(f"[{current_time}][main thread] {message}")
+
 
 while True:
     print("")
@@ -46,23 +46,23 @@ while True:
     _print(f"Random Stat Manager Thread Alive: {rs_manager.is_alive()}")
     _print(f"Raid Base Manager Thread Alive: {rb_manager.is_alive()}\n")
 
-    if activity_manager.is_alive() == False:
+    if activity_manager.is_alive() is False:
         _print("Restarting Activity Manager")
         activity_manager.start(INTERVAL)
 
-    if restart_manager.is_alive() == False:
+    if restart_manager.is_alive() is False:
         _print("Restarting Restart Manager")
         restart_manager.start(INTERVAL)
 
-    if vote_manager.is_alive() == False:
+    if vote_manager.is_alive() is False:
         _print("Restarting Vote Manager")
         vote_manager.start(INTERVAL)
-    
-    if rs_manager.is_alive() == False:
+
+    if rs_manager.is_alive() is False:
         _print("Restarting Random Stat Manager")
         rs_manager.start(600)
 
-    if rb_manager.is_alive() == False:
+    if rb_manager.is_alive() is False:
         _print("Restarting Raid Base Manager")
         rb_manager.start(60)
 

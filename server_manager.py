@@ -17,7 +17,7 @@ PlayerDataFiles.set_files(players_files_path=Path("players.json"))
 
 activity_manager = PlayerActivityManager(RCON)
 restart_manager = RestartManager(RCON, FTP_CONF)
-vote_manager = VoteManager(RCON)
+vote_manager = VoteManager(RCON, FTP_CONF)
 rs_manager = RandomStatManager(FTP_CONF, RCON)
 
 activity_manager.start(INTERVAL)
