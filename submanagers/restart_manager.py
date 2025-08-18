@@ -23,63 +23,77 @@ LAST_TIMESTAMPS = {
 }
 
 RESTARTS = {
-    "weekStartup": 17,
+    "weekStartup": 8,
     "weekShutdown": 0,
     "weekendStartup": 8,
-    "weekendShutdown": 2,
+    "weekendShutdown": 0,
 }
 
 class RestartManager(Manager):
     def __init__(self, rconapi: RconApi, ftp_config: dict):
-        super().__init__(self.__process, "restart manager")
+        super().__init__(self.__process, "restart manager", 30)
         self.time_handler: TimeHandler = TimeHandler(RESTARTS["weekStartup"], RESTARTS["weekShutdown"], RESTARTS["weekendStartup"], RESTARTS["weekendShutdown"])
         self.rcon : RconApi = rconapi
-        self.ftp : ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMap.ABERRATION)
+        self.ftp : ArkFtpClient = ArkFtpClient.from_config(ftp_config, ArkMap.RAGNAROK)
         self.ftp.close()
-        self.wipe_on = ["Friday", "Monday"]
+        self.wipe_on = ["Monday", "Wednesday", "Friday"]  # Days to wipe dinos
         self.restarts = RESTARTS.copy()
         self.last_timestamps = LAST_TIMESTAMPS.copy()
         self.secret_password = SECRET_PASSWORD
         self.open_password = OPEN_PASSWORD
         self.warning_times = [60, 45, 30, 25, 20, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]  
+        self.next_restart_playable = self.time_handler.is_next_restart_playable()
+        self.password_changed = False
+        self.in_countdown = False
 
     def __process(self, interval: int):
         last_print: PreviousDate = LAST_TIMESTAMPS["print"]
-        if last_print is None or (last_print.is_new_minute() and self.time_handler.is_quarter_hour()):
+        if last_print is None or last_print.has_been_quarter_hour():
             self._print(f"Next restart in: {self.time_handler.time_until_next_restart()} minutes ({self.time_handler.time_until_next_restart() / 60:.2f} hours); next restart is playable: {'Yes' if self.time_handler.is_next_restart_playable() else 'No'}")
             LAST_TIMESTAMPS["print"] = PreviousDate()    
         self.restart_warning()
         self.wipe_dinos()
 
-    def stop(self):
-        super().stop()
-        self.ftp.close()
-
     def restart_warning(self):
         time_to = self.time_handler.time_until_next_restart()
-        last : PreviousDate = self.last_timestamps["restart_ping"]
 
-        if time_to == 0:
-            if self.time_handler.is_next_restart_playable():
+        if time_to > 60:
+            self.in_countdown = False
+            self.password_changed = False
+            return
+
+        if time_to < 60 and not self.in_countdown:
+            self._print("entering countdown mode")
+            self.in_countdown = True
+            self.rcon.send_message(f"Server will shut down in {time_to} minutes!")
+            self.last_timestamps["restart_ping"] = PreviousDate()
+
+        next_playable = self.time_handler.is_next_restart_playable()
+        if next_playable != self.next_restart_playable:
+            self._print(f"Next restart playable changed: {self.next_restart_playable} -> {next_playable}")
+            if self.next_restart_playable:
                 self.last_timestamps["open"] = PreviousDate()
             else:
                 self.last_timestamps["close"] = PreviousDate()
+            self.next_restart_playable = next_playable
 
-        if last is not None and not last.is_new_minute():
-            return
 
-        if time_to in self.warning_times:
+        if (self.in_countdown and
+            ((self.last_timestamps["restart_ping"] is None) or
+            (self.last_timestamps["restart_ping"].more_than_ago(minutes=10)) or
+            (time_to < 10 and self.last_timestamps["restart_ping"].is_new_minute()))):
             self._print("Sending restart warning")
             self.rcon.send_message(f"Server will shut down in {time_to} minutes!")
             self.last_timestamps["restart_ping"] = PreviousDate()
 
-            if time_to == 60:
+            if not self.password_changed:
                 self._print("Changing server password")
                 new_pass = self.open_password if self.time_handler.is_next_restart_playable() else self.secret_password
                 self.ftp.connect()
                 self.ftp.change_ini_setting("ServerPassword", new_pass, INI.GAME_USER_SETTINGS)
                 self.ftp.close()
                 self._print(f"Server password changed to {new_pass}")
+                self.password_changed = True
 
     def wipe_dinos(self):
         last_close : PreviousDate = self.last_timestamps["close"]

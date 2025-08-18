@@ -1,17 +1,10 @@
 import threading
 import time
 import json
-from pathlib import Path
-from typing import Dict
-from uuid import UUID
 
-from arkparse import AsaSave
-from arkparse.api.dino_api import DinoApi
-from arkparse.enums import ArkMap, ArkStat
-from arkparse.object_model.dinos.dino import Dino
+from arkparse.enums import ArkMap
 from arkparse.ftp.ark_ftp_client import ArkFtpClient
 from arkparse.api.rcon_api import RconApi, GameLogEntry
-from arkparse.classes.dinos import Dinos
 from .__manager import Manager
 
 VOTE_MESSAGES = {
@@ -43,15 +36,14 @@ class VoteManager(Manager):
         self.log_handle = self.rcon.subscribe()
 
         # FTP client
-        self.ftp = ArkFtpClient.from_config(ftp_config, ArkMap.ABERRATION)
+        self.ftp = ArkFtpClient.from_config(ftp_config, ArkMap.RAGNAROK)
 
     def stop(self):
-        super().stop()
         self.stop_vote_count.set()
         self.vote_count_down_thread.join()
 
     def is_alive(self):
-        return super().is_alive() and self.vote_count_down_thread.is_alive()
+        return self.vote_count_down_thread.is_alive()
     
     def __ue5_to_tribe(self, ue5_id: str):
         """Given a UE5 player ID, return the tribe name (if any)."""
@@ -111,23 +103,6 @@ class VoteManager(Manager):
                 if entry.message == "!StartTestVote":
                     self.start_vote("Test", 60)
 
-                # Example: "[BOT] Is there an alpha reaper?" -> vote type = reaper
-                elif entry.type == entry.EntryType.GAME and entry.message.startswith("[BOT] Is there an alpha "):
-                    vote_t = entry.message.split("[BOT] Is there an alpha ")[1].split("?")[0]
-                    self.start_vote(vote_t, 180)
-
-                # Example: "The highest damage wild dino is X" -> triggers "Dino hunt damage"
-                elif entry.type == entry.EntryType.GAME and entry.message.startswith("The highest ") and 'wild' in entry.message:
-                    # The third token is typically "damage"/"health"/"oxygen"/etc.
-                    vote_stat = entry.message.split(" ")[2]
-                    vote_t = "Dino hunt " + vote_stat
-                    self.start_vote(vote_t, 180)
-
-                # Admin command: "!AdminAlpha!reaper" -> starts alpha reaper vote
-                elif entry.message.startswith("!AdminAlpha!"):
-                    vote_t = entry.message.split("!")[-1]
-                    self.start_vote(vote_t, 180)
-
     def __count_votes(self):
         """
         Count votes. Returns a tuple:
@@ -183,63 +158,6 @@ class VoteManager(Manager):
 
         self.rcon.send_message("Type !VoteYes or !VoteNo to vote")
 
-    def __handle_alpha_vote_success(self):
-        """When alpha vote passes, reveal the alpha's location on Aberration."""
-        bp = None 
-        if self.vote_type == "reaper":
-            bp = Dinos.alpha_reaper_king
-        elif self.vote_type == "basilisk":
-            bp = Dinos.alpha_basilisk
-        elif self.vote_type == "karkinos":
-            bp = Dinos.alpha_karkinos
-        else:
-            return
-
-        self.ftp.connect()
-        save_path = self.ftp.download_save_file(Path.cwd() / "artifacts" / "vote_mngr")
-        self.ftp.close()
-
-        save = AsaSave(save_path)
-        dino_api = DinoApi(save)
-        dinos: Dict[UUID, Dino] = dino_api.get_all_wild_by_class([bp])
-
-        if len(dinos.keys()):
-            dino = list(dinos.values())[0]
-            coords = dino.location.as_map_coords(ArkMap.ABERRATION)
-            self.rcon.send_message(
-                f"Vote passed! Alpha {self.vote_type} found at {coords}"
-            )
-        else:
-            self.rcon.send_message(f"Vote passed, but no alpha {self.vote_type} was found!")
-
-    def __handle_dino_hunt_vote_success(self):
-        """When a 'Dino hunt' vote passes, show the location of the best wild dino for a given stat."""
-        # e.g., self.vote_type = "Dino hunt damage" -> last token is 'damage'
-        stat = self.vote_type.split(" ")[-1]
-
-        if stat == "damage":
-            e_stat = ArkStat.MELEE_DAMAGE
-        elif stat == "health":
-            e_stat = ArkStat.HEALTH
-        elif stat == "oxygen":
-            e_stat = ArkStat.OXYGEN
-        else:
-            raise ValueError(f"Invalid stat {stat}")
-
-        self.ftp.connect()
-        save_path = self.ftp.download_save_file()
-        self.ftp.close()
-
-        dino_api = DinoApi(AsaSave(contents=save_path))
-        best_dinos = dino_api.get_best_dino_for_stat(stat=e_stat, only_untamed=True)
-
-        if best_dinos:
-            dino = best_dinos[0]
-            coords = dino.location.as_map_coords(ArkMap.ABERRATION)
-            self.rcon.send_message(f"Vote passed! Check {coords}! Happy hunting!")
-        else:
-            self.rcon.send_message("Vote passed! But no dino found with that stat.")
-
     def handle_vote_result(self):
         """Called when the vote time runs out. Evaluate the results and announce."""
         yes_votes, no_votes, yes_tribes = self.__count_votes()
@@ -250,22 +168,6 @@ class VoteManager(Manager):
                 f"Test vote ended. Yes: {yes_votes}, No: {no_votes}, "
                 f"{yes_tribes} {'tribe' if yes_tribes == 1 else 'tribes'} voted yes"
             )
-
-        elif self.vote_type in ("reaper", "basilisk", "karkinos"):
-            # Passes if every tribe that exists has voted yes 
-            # (or if you only want the ones that actually voted, you can adapt logic).
-            if yes_tribes == total_tribes and total_tribes > 0:
-                self.__handle_alpha_vote_success()
-            else:
-                self.rcon.send_message("Vote failed! Not all tribes voted yes")
-
-        elif self.vote_type and self.vote_type.startswith("Dino hunt"):
-            # Passes if at least 2 distinct tribes said yes
-            if yes_tribes >= 2:
-                self.__handle_dino_hunt_vote_success()
-            else:
-                self.rcon.send_message("Vote failed! Not enough tribes voted yes")
-
         else:
             # Fallback for any other vote type
             self.rcon.send_message(

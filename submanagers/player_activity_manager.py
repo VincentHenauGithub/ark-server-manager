@@ -3,16 +3,17 @@ from .__manager import Manager
 from .time_handler import TimeHandler, PreviousDate
 
 class PlayerActivityManager(Manager):
-    def __init__(self, rconapi: RconApi):
-        super().__init__(self.__process, "player activity manager")
+    def __init__(self, rconapi: RconApi, time_lock=True):
+        super().__init__(self.__process, "player activity manager", 5)
         self.rcon : RconApi = rconapi
         self.time_handler: TimeHandler = TimeHandler()
         self.last_active_ts: PreviousDate = None
         self.prev_players = self.rcon.get_active_players()
         self.last_print: PreviousDate = None
+        self.time_lock = time_lock
 
     def __process(self, interval: int):
-        should_print = (self.last_print is None or self.last_print.is_new_minute()) and self.time_handler.is_quarter_hour()
+        should_print = self.last_print is None or self.last_print.has_been_quarter_hour()
 
         if should_print:
             self.last_print = PreviousDate()
@@ -24,19 +25,13 @@ class PlayerActivityManager(Manager):
         self.grind_notifier(current_players)
         self.prev_players = current_players
 
-    def pr(self):
-        self.__process(1)
-
     def expose_players(self, p):
         players = self.rcon.get_active_players(p)
         last : PreviousDate = self.last_active_ts
         if players is None:
             return None
         
-        if not self.time_handler.is_quarter_hour():
-            return None
-
-        if last is not None and not last.is_new_minute():
+        if last is not None and not last.has_been_quarter_hour():
             return None
         
         message = f"Active players ({self.time_handler.get_hr_min_string()}): "

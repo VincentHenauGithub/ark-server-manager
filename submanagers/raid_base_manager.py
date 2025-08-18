@@ -2,34 +2,100 @@ from pathlib import Path
 import json
 import random
 import time
+from typing import List
 
-from arkparse import MapCoords, Classes, AsaSave
-from arkparse.ftp import ArkFtpClient
-from arkparse.enums import ArkMap, ArkEquipmentStat
-from arkparse.api import StructureApi, BaseApi, EquipmentApi
+from arkparse import MapCoords, Classes
+from arkparse.enums import ArkMap
+from arkparse.api import BaseApi, EquipmentApi, PlayerApi
 from arkparse.api.rcon_api import RconApi
 from arkparse.parsing.struct import ActorTransform
 from arkparse.object_model.bases.base import Base
 from arkparse.object_model.misc.object_owner import ObjectOwner
 from arkparse.object_model.structures.structure_with_inventory import StructureWithInventory
-from arkparse.object_model.stackables.resource import Resource
 from .__manager import Manager
-from .time_handler import TimeHandler
+from .time_handler import TimeHandler, PreviousDate
+from .loot_configuration import add_loot
+from .save_tracker import SaveTracker
+from .locations import LocationController
 
+BASE_SIZES = [
+    {
+        "min_turrets": 0,
+        "max_turrets": 15,
+        "active": True,
+        "types": [
+            "starter"
+        ]
+    },
+    {
+        "min_turrets": 15,
+        "max_turrets": 30,
+        "active": False, 
+        "types": [
+            "starter",
+            "medium"
+        ]
+    },
+    {
+        "min_turrets": 30,
+        "max_turrets": 40,
+        "active": False, 
+        "types": [
+            "starter",
+            "medium"
+        ]
+    },
+    {
+        "min_turrets": 40,
+        "max_turrets": 50,
+        "active": False, 
+        "types": [
+            "medium",
+            "large"
+        ]
+    },
+    {
+        "min_turrets": 50,
+        "max_turrets": 75,
+        "active": False, 
+        "types": [
+            "medium",
+            "large"
+        ]
+    },
+    {
+        "min_turrets": 50,
+        "max_turrets": 75,
+        "active": False, 
+        "types": [
+            "mixed"
+        ]
+    },
+    {
+        "min_turrets": 75,
+        "max_turrets": 100,
+        "active": False, 
+        "types": [
+            "medium",
+            "large"
+        ]
+    },
+    {
+        "min_turrets": 75,
+        "max_turrets": 100,
+        "active": False, 
+        "types": [
+            "mixed"
+        ]
+    }
+]
 
 class RaidBaseManager(Manager):
-    def __init__(self, rconapi: RconApi, ftp_config: str, base_path: Path):
-        super().__init__(self.__process, "raid base manager")
+    def __init__(self, rconapi: RconApi, save_tracker: SaveTracker, base_path: Path):
+        super().__init__(self.__process, "raid base manager", 1717)
         self.rcon: RconApi = rconapi
-        self.ftp: ArkFtpClient = ArkFtpClient.from_config(
-            ftp_config, ArkMap.ABERRATION)
-        self.ftp.close()
 
-        self.save: AsaSave = None
-        self.s_api: StructureApi = None,
-        self.b_api: BaseApi = None
-        self.e_api: EquipmentApi = None
-
+        self.save_tracker: SaveTracker = save_tracker
         self.time_handler: TimeHandler = TimeHandler()
 
         self.data_path = base_path / "data.json"
@@ -37,6 +103,7 @@ class RaidBaseManager(Manager):
         self.data_ = self.__init_data(self.data_path)
         self.base_path = base_path
         self.config: dict = json.load(open(base_path / "config.json", 'r'))
+        self.last_timestamp: PreviousDate = None
 
         self.__save_data(self.data_path)
 
@@ -48,84 +115,26 @@ class RaidBaseManager(Manager):
         else:
             with open(path, 'r') as f:
                 return json.load(f)
-
-    def set_save(self, save: AsaSave, map: ArkMap = ArkMap.ABERRATION):
-        self.save = save
-        self.s_api = StructureApi(save)
-        self.b_api = BaseApi(save, map)
-        self.e_api = EquipmentApi(save)
-
     def __save_data(self, path: Path):
         with open(path, 'w') as f:
             json.dump(self.data_, f, indent=4)
 
-    def __are_structures_present(self, coords: MapCoords, radius: float = 2, owner_tribe_id: int = 1, map: ArkMap = ArkMap.ABERRATION, limit: int = 5) -> bool:
-        structures = self.s_api.get_at_location(map, coords, radius)
-        filtered = self.s_api.filter_by_owner(
-            structures, owner_tribe_id=owner_tribe_id, invert=True)
+    def __is_base_raided(self, coords: MapCoords, owner_tribe_id: int, radius: float = 1, map: ArkMap = ArkMap.RAGNAROK) -> bool:
+        structures = self.save_tracker.get_api(BaseApi).get_at_location(map, coords, radius)
 
-        result = False
-        if len(filtered) > limit:
-            result = True
-            self._print(f"There are {len(filtered)} other structures around {coords}, cannot spawn here")
-
-        return result
-
-    def __is_base_raided(self, coords: MapCoords, radius: float = 1, owner_tribe_id: int = 1, map: ArkMap = ArkMap.ABERRATION) -> bool:
-        structures = self.s_api.get_at_location(map, coords, radius)
-
-        vault = None
-        for _, structure in structures.items():
-            if structure.object.blueprint == Classes.structures.placed.utility.vault and structure.owner.tribe_id == owner_tribe_id:
-                vault = structure
-                break
-
-        if vault is None:
-            return True
-
-        if vault.inventory is None:
-            return True
-
-        if len(vault.inventory.items) == 0:
-            return True
-
-        return False
-
-    def __is_base_spawned_at(self, loc_file: Path) -> bool:
-        for base in self.data_["active_bases"]:
-            if base["config"]["location"] == loc_file.name:
-                return True
-        return False
+        all_vaults = [structure for _, structure in structures.items() if structure.object.blueprint == Classes.structures.placed.utility.vault]
+        for vault in all_vaults:
+            if vault.owner.tribe_id == owner_tribe_id:
+                if vault.inventory is not None and len(vault.inventory.items) > 0:
+                    return False
+                
+        return True
 
     def __get_main_location(self, loc_file: Path) -> MapCoords:
         jsn = json.load(loc_file.open())
         for loc in jsn.keys():
             if jsn[loc]["type"] == "main":
-                return ActorTransform.from_json(jsn[loc]["location"]).as_map_coords(ArkMap.ABERRATION)
-
-    def __get_blocked_locations(self, map: ArkMap = ArkMap.ABERRATION) -> list:
-        blocked = []
-        possible_locations = self.base_path / "locations" / "randomised"
-        for loc_file in possible_locations.iterdir():
-            if self.__is_base_spawned_at(loc_file):
-                blocked.append(loc_file.name)
-            elif self.__are_structures_present(self.__get_main_location(loc_file), map=map):
-                blocked.append(loc_file.name)
-
-        return blocked
-
-    def __get_random_location(self, map: ArkMap = ArkMap.ABERRATION) -> MapCoords:
-        possible_locations = self.base_path / "locations" / "randomised"
-        loc_file = random.choice(list(possible_locations.iterdir()))
-        blocked = self.__get_blocked_locations(map)
-
-        if len(blocked) == len(list(possible_locations.iterdir())):
-            raise Exception("All locations have been used")
-
-        if loc_file.name in blocked:
-            return self.__get_random_location(map)
-
-        return json.load(loc_file.open()), loc_file.name
+                return ActorTransform.from_json(jsn[loc]["location"]).as_map_coords(ArkMap.RAGNAROK)
 
     def __get_random_owner(self) -> int:
         owners = json.load(open(self.owner_path, 'r'))
@@ -142,143 +151,141 @@ class RaidBaseManager(Manager):
                 unused_owners.append(owner)
 
         return random.choice(unused_owners)
+    
+    def __get_enabled_config(self) -> list:
+        enabled_configs = []
+        for config in BASE_SIZES:
+            if config["active"]:
+                enabled_configs.append(config)
+        return enabled_configs
+    
+    def __get_available_main_bases(self, types: List[str]) -> list:
+        base_folder_path = self.base_path / "base"
+        available_bases = []
+        for base_file in base_folder_path.iterdir():
+            prefix = base_file.name.split("_")[0]
+            if prefix in types:
+                available_bases.append(base_file)
+        return available_bases
+    
+    def __get_available_towers(self, types: List[str]) -> list:
+        base_folder_path = self.base_path / "tower"
+        available_bases = []
+        for base_file in base_folder_path.iterdir():
+            prefix = base_file.name.split("_")[0]
+            if prefix in types:
+                available_bases.append(base_file)
+        return available_bases
 
     def compose_base(self):
-        size = random.choice(list(self.config.keys()))
-        cfg = self.config[size]
-        loc_config, file = self.__get_random_location()
-        config: dict = {
-            "locations": loc_config,
-            "size": size,
-            "location": file,
-            "total_turrets": 0,
-        }
+        cfg = random.choice(self.__get_enabled_config())
+        loc_config, file, _ = LocationController.get_random_unblocked_location(self.save_tracker.get_api(BaseApi), radius=1, map=ArkMap.RAGNAROK, limit=5)
         turret_total = 0
         curr_tries = 0
 
+        bases = self.__get_available_main_bases(cfg["types"])
+        towers = self.__get_available_towers(cfg["types"])
+
+        self._print(f"[Base]Selected {len(bases)} bases and {len(towers)} towers for configuration {cfg['types']}")
+
         while cfg["min_turrets"] >= turret_total or cfg["max_turrets"] <= turret_total:
-            size = random.choice(list(self.config.keys()))
-            cfg = self.config[size]
             if curr_tries > 50:
-                loc_config, file = self.__get_random_location()
+                loc_config, file, _ = LocationController.get_random_unblocked_location(self.save_tracker.get_api(BaseApi), radius=1, map=ArkMap.RAGNAROK, limit=5)
                 curr_tries = 0
+
             config = {
                 "locations": loc_config,
-                "size": size,
                 "location": file,
                 "total_turrets": 0,
+                "mixed": True if "mixed" in cfg["types"] else False,
             }
+
             curr_tries += 1
             turret_total = 0
             for loc in loc_config.keys():
                 if config["locations"][loc]["type"] == "main":
-                    selected_base = random.choice(cfg["main"])
-                    config["locations"][loc]["selected_path"] = str(
-                        self.base_path / "base" / selected_base)
+                    selected_base = random.choice(bases)
+                    config["locations"][loc]["selected_path"] = str(selected_base)
                 elif config["locations"][loc]["type"] == "tower":
-                    selected_base = random.choice(cfg["tower"])
-                    config["locations"][loc]["selected_path"] = str(
-                        self.base_path / "turret_tower" / selected_base)
-                config["locations"][loc]["selection"] = json.load(
-                    open(Path(config["locations"][loc]["selected_path"]) / "base.json", 'r'))
+                    selected_tower = random.choice(towers)
+                    config["locations"][loc]["selected_path"] = str(selected_tower)
+
+                config["locations"][loc]["selection"] = json.load(open(Path(config["locations"][loc]["selected_path"]) / "base.json", 'r'))
+
                 turret_total += config["locations"][loc]["selection"]["nr_of_turrets"]
 
+        LocationController.add_active_location(file)
         config["total_turrets"] = turret_total
 
         return config
+    
+    def __clean_other_vaults(self, base: Base, loot_vault: StructureWithInventory):
+        all_vaults = [structure for _, structure in base.structures.items() if structure.object.blueprint == Classes.structures.placed.utility.vault]
+        for vault in all_vaults:
+            vault: StructureWithInventory
+            if vault.uuid != loot_vault.uuid:
+                vault.inventory.clear_items()
+        self._print(f"[Loot]Cleared other vaults in base")
 
-    def __add_loot(self, base: Base, loot_path: Path):
-        def get_equipment_class(type: str):
-            if type == "armor":
-                return EquipmentApi.Classes.ARMOR, ArkEquipmentStat.ARMOR
-            elif type == "weapon":
-                return EquipmentApi.Classes.WEAPON, ArkEquipmentStat.DAMAGE
-            elif type == "saddle":
-                return EquipmentApi.Classes.SADDLE, ArkEquipmentStat.ARMOR
-            else:
-                raise ValueError(f"Invalid type: {type}")
-
+    def __add_loot(self, base: Base, nr_of_turrets: int, mixed: bool):
         def get_vault(base: Base) -> StructureWithInventory:
-            for _, structure in base.structures.items():
-                if structure.object.blueprint == Classes.structures.placed.utility.vault:
-                    return structure
+            all_vaults = [structure for _, structure in base.structures.items() if structure.object.blueprint == Classes.structures.placed.utility.vault]
+            random_vault = random.choice(all_vaults)
+            return random_vault
 
-        def add_random_gear_pieces(base: Base, loot: dict):
-            nr_of_entries = len(loot)
-            vault = get_vault(base)
-            is_bp = True
-            for _ in range(3):
-                entry = loot[random.randint(0, nr_of_entries - 1)]
-                cls, stat = get_equipment_class(entry["type"])
-                item = self.e_api.generate_equipment(
-                    cls, entry["blueprint"], stat, entry["min_value"], entry["max_value"], force_bp=is_bp)
-                self.save.add_to_db(item)
-                vault.add_item(item.object.uuid, self.save)
-                is_bp = random.choices([True, False], weights=[20, 80], k=1)[0]
+        selected_vault: StructureWithInventory = get_vault(base)
+        initial_vault_items = selected_vault.inventory.items.copy()
 
-        def add_resources(base: Base, loot: dict):
-            vault = get_vault(base)
-            for entry in loot:
-                total = random.randint(entry["min_value"], entry["max_value"])
-                while total > 0:
-                    local = min(total, get_stack_size(entry["blueprint"]))
-                    total -= local
-                    item = Resource.generate_from_template(
-                        entry["blueprint"], self.save, vault.object.uuid)
-                    item.set_quantity(local)
-                    self.save.add_to_db(item)
-                    vault.add_item(item.object.uuid, self.save)
-
-        def get_stack_size(blueprint: str):
-            with open(self.base_path / "loot" / "stack_sizes.json") as f:
-                stack_sizes = json.load(f)
-                return stack_sizes["sizes"][blueprint] * stack_sizes["multiplier"]
-
-        loot = json.load(loot_path.open())
-        initial_vault_items = get_vault(base).inventory.items.copy()
-        add_random_gear_pieces(base, loot["gear"])
-        add_resources(base, loot["resources"])
+        add_loot(self, nr_of_turrets, self.save_tracker.get_save(), selected_vault, self.save_tracker.get_api(EquipmentApi), mixed=mixed)
+        
         for item in initial_vault_items:
-            get_vault(base).remove_item(item)
+            selected_vault.remove_item(item)
+
+        self._print(f"[Loot]Added loot to vault {selected_vault.uuid} in base")
+        self.__clean_other_vaults(base, selected_vault)
 
     def __spawn_section(self, path: Path, loc: ActorTransform, owner: dict):
         self._print("[Spawn]Importing section from {path}")
-        base: Base = self.b_api.import_base(path, location=loc)
-        self._print("[Spawn]Section imported at {loc.as_map_coords(ArkMap.ABERRATION)}")
-        base.pad_turret_ammo(25, self.save)
+        base: Base =  self.save_tracker.get_api(BaseApi).import_base(path, location=loc)
+        self._print(f"[Spawn]Section imported at {loc.as_map_coords(ArkMap.RAGNAROK)}")
+        base.set_turret_ammo(self.save_tracker.get_save(), bullets_in_auto=1400, bullets_in_heavy=2500, shards_in_tek=1500)
         self._print("[Spawn]Turret ammo padded")
-        base.set_nr_of_element_in_generators(3, self.save)
+        base.set_fuel_in_generators(self.save_tracker.get_save(), nr_of_element=3, nr_of_gasoline=30)
         self._print("[Spawn]Element added to generators")
         o: ObjectOwner = ObjectOwner()
-        o.set_tribe(1, owner["name"])
-        o.set_player(1)
-        base.set_owner(o, self.save)
+        tribe_id = self.save_tracker.get_api(PlayerApi).generate_tribe_id()
+        player_id = self.save_tracker.get_api(PlayerApi).generate_player_id()
+        o.set_tribe(tribe_id, owner["name"])
+        o.set_player(player_id)
+        base.set_owner(o)
         self._print(f"[Spawn]Owner set to {owner['name']}")
-        return base
+        return base, tribe_id, player_id
 
-    def spawn_base(self, base_config: dict, map: ArkMap = ArkMap.ABERRATION):
+    def spawn_base(self, base_config: dict, map: ArkMap = ArkMap.RAGNAROK):
         base_status = {
-            "type": base_config["size"],
             "is_raided": False,
             "raid_broadcasted": False,
             "config": base_config,
+            "tribe_id": None,
+            "player_id": None,
             "owner": self.__get_random_owner()
         }
-        base_config = base_config["locations"]
-        for loc in base_config.keys():
-            path = base_config[loc]["selected_path"]
+        turrets = base_config["total_turrets"]
+        loc_config: dict = base_config["locations"]
+        for loc in loc_config.keys():
+            path = loc_config[loc]["selected_path"]
             actor_transform = ActorTransform.from_json(
-                base_config[loc]["location"])
-            base: Base = self.__spawn_section(
+                loc_config[loc]["location"])
+            base, tribe_id, player_id = self.__spawn_section(
                 path, actor_transform, base_status["owner"])
             self._print("[Spawn]Spawned base section")
-
-            if base_config[loc]["type"] == "main":
+            base_status["tribe_id"] = tribe_id
+            base_status["player_id"] = player_id
+            if loc_config[loc]["type"] == "main":
                 base_status["location"] = str(
                     actor_transform.as_map_coords(map))
                 self._print("[Spawn]Adding loot to the base")
-                self.__add_loot(base, self.base_path / "loot" /
-                                (base_status["type"] + ".json"))
+                self.__add_loot(base, turrets, mixed=base_config["mixed"])
         self._print("[Spawn]Base inserted, saving...")
 
         self.data_["active_bases"].append(base_status)
@@ -290,19 +297,24 @@ class RaidBaseManager(Manager):
             loc: str = base["location"]
             x, y = map(float, loc.strip("()").split(", "))
             coords = MapCoords(x, y)
-            base: Base = self.b_api.get_base_at(coords, 2, owner_tribe_id=1)
-            nr = base.set_nr_of_element_in_generators(3, self.save)
-            self._print(f"[Spawn]Element added to {nr} generators at {coords}")
+            base: Base =  self.save_tracker.get_api(BaseApi).get_base_at(coords, 2, owner_tribe_id=base["tribe_id"])
+            print(f"Nr of items in base: {len(base.structures)}")
+            nr = base.set_fuel_in_generators(self.save_tracker.get_save(), nr_of_element=3, nr_of_gasoline=30)
+            self._print(f"[Spawn]Fuel added to {nr} generators at {coords}")
 
     def __check_raided(self):
         for base in self.data_["active_bases"]:
             file_path = self.base_path / "locations" / \
-                "randomised" / base["config"]["location"]
-            if self.__is_base_raided(self.__get_main_location(file_path)) and not base["is_raided"]:
+                "ragnarok" / base["config"]["location"]
+            if self.__is_base_raided(self.__get_main_location(file_path), owner_tribe_id=base["tribe_id"]) and not base["is_raided"]:
                 base["is_raided"] = True
                 self._print(f"[Raided]Base at {base['location']} is raided")
                 self._print(f"[Raided]{base['owner']['raided']}")
                 self.rcon.send_message(f"{base['owner']['raided']}")
+            elif not base["is_raided"]:
+                self._print(f"[Active]Base at {base['location']} is active")
+            else:
+                self._print(f"[Raided]Base at {base['location']} is still raided")
         self.__save_data(self.data_path)
 
     def __remove_raided(self):
@@ -313,78 +325,80 @@ class RaidBaseManager(Manager):
                 x, y = map(float, loc.strip("()").split(", "))
                 coords = MapCoords(x, y)
                 self._print(f"[Raided]Removing base at {coords}")
-                self.s_api.remove_at_location(
-                    ArkMap.ABERRATION, coords, 2, owner_tribe_id=1)
+                self.save_tracker.get_api(BaseApi).remove_at_location(
+                    ArkMap.RAGNAROK, coords, 2, owner_tribe_id=base["tribe_id"])
                 data_copy.remove(base)
+                LocationController.remove_active_location(base["config"]["location"])
         self.data_["active_bases"] = data_copy
         self.__save_data(self.data_path)
 
     def __process(self, interval: int):
         self.main()
 
-    def __get_save(self):
-        self.ftp.connect()
-        self.set_save(AsaSave(contents=self.ftp.download_save_file()))
-        self.ftp.close()
-
     def __put_save(self):
-        self.ftp.connect()
-        self.save.store_db(self.base_path / "Aberration_WP.ark")
-        self.ftp.upload_save_file(path=self.base_path / "Aberration_WP.ark")
-        self.ftp.close()
+        self.save_tracker.put_save()
+
+    def _print_tp_command(self, config: dict):
+        locations = config["locations"]
+        for loc in locations.keys():
+            if locations[loc]["type"] == "main":
+                coords = ActorTransform.from_json(locations[loc]["location"])
+                map_loc = coords.as_map_coords(ArkMap.RAGNAROK)
+                self._print(f"TP COMMAND: cheat TPCoords {map_loc.lat} {map_loc.long} {int(coords.z + 3000)}")
 
     def main(self):
-
-        if self.time_handler.is_half_hour():
-            self._print(f"[Main]Checking for bases (hour={time.localtime().tm_hour})")
-            self.__get_save()
-            # check if any bases have been raided
-            self.__check_raided()
-
-            if time.localtime().tm_hour == 5:
-                self._print("[Main]Spawning and updating bases")
-                # remove raided bases
-                self.__remove_raided()
-                # spawn up to three bases
-                for _ in range(3):
-                    if len(self.data_["active_bases"]) >= 3:
-                        break
-                    cfg = self.compose_base()
-                    self.spawn_base(cfg)
-                # Pad generators
-                self.__pad_active_base_generators()
-                self.__put_save()
-            # Report active bases
-            for base in self.data_["active_bases"]:
-                if not base["is_raided"]:
-                    self._print(f"[Active]Base at {base['location']} is active")
-                    self._print(f"[Active]{base['owner']['message']}{base['location']}")
-                    self.rcon.send_message(
-                        f"{base['owner']['message']}{base['location']}")
-
-    def test_full(self):
-        self._print("[Main]Checking for bases")
-        self.__get_save()
-
-        # self.set_save(AsaSave(self.base_path / "Aberration_WP_pre.ark"))
-
+        self._print(f"[Main]Checking for bases (hour={time.localtime().tm_hour})")
         # check if any bases have been raided
         self.__check_raided()
 
+        if time.localtime().tm_hour == 5 and (self.last_timestamp is None or self.last_timestamp.has_been_hour()):
+            self.last_timestamp = PreviousDate()
+            self._print("[Main]Spawning and updating bases")
+            
+            # remove raided bases
+            self.__remove_raided()
+
+            # spawn up to 5 bases
+            if len(self.data_["active_bases"]) == 0:
+                for _ in range(1):
+                    cfg = self.compose_base()
+                    self.spawn_base(cfg)
+
+            # Pad generators
+            self.__pad_active_base_generators()
+            self.__put_save()
+
+        nr_online = len(self.rcon.get_active_players())
+
+        # Report active bases
+        for base in self.data_["active_bases"]:
+            if not base["is_raided"]:
+                self._print(f"[Active]{base['owner']['message']}{base['location']}")
+                message = f"{base['owner']['message']}{base['location']}"
+                self._print_tp_command(base["config"])
+                if nr_online < 3:
+                    self._print(f"[Active]Not enough players online ({nr_online}), not sending coords")
+                    message = message.split(' at ')[0] + " at an undisclosed location"
+                self.rcon.send_message(message)
+
+    def test_full(self):
+        self._print("[Main]Checking for bases")
+        # self.__get_save()
+
+        self.data_["active_bases"] = []
         self._print("[Main]Spawning and updating bases")
-        # remove raided bases
-        self.__remove_raided()
-        # spawn up to three bases
+
         for _ in range(3):
             if len(self.data_["active_bases"]) >= 3:
                 break
             cfg = self.compose_base()
             self.spawn_base(cfg)
+
         # Pad generators
         self.__pad_active_base_generators()
-        # self.save.store_db(Path.cwd() / "Aberration_WP.ark")
-        self.__put_save()
-        # Report active bases
+        store_path = Path("D:\\SteamLibrary\\steamapps\\common\\ARK Survival Ascended\\ShooterGame\\Saved\\SavedArksLocal\\Ragnarok_WP\\Ragnarok_WP.ark")
+        self.save_tracker.get_save().store_db(store_path)
+
         for base in self.data_["active_bases"]:
             if not base["is_raided"]:
                 self._print(f"[Active]Base at {base['location']} is active")
@@ -394,15 +408,14 @@ class RaidBaseManager(Manager):
 
     def test_hour(self):
         self._print("[Main]Checking for bases")
-        self.__get_save()
+        self.save_tracker.get_save()
         # check if any bases have been raided
         self.__check_raided()
 
         for base in self.data_["active_bases"]:
             if not base["is_raided"]:
                 self._print(f"[Active]Base at {base['location']} is active")
-                self._print(f"[Active]{base['owner']['message']}{
-                            base['location']}")
+                self._print(f"[Active]{base['owner']['message']}{base['location']}")
                 self.rcon.send_message(
                     f"{base['owner']['message']}{base['location']}")
 

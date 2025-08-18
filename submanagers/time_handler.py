@@ -70,11 +70,11 @@ class TimeHandler:
             else:
                 return self._minutes_until_wd_startup() < self._minutes_until_wd_shutdown()
 
-    def is_quarter_hour(self):
-        return time.localtime().tm_min % 15 == 0
+    # def is_quarter_hour(self):
+    #     return time.localtime().tm_min % 15 == 0
 
-    def is_5_minutes(self):
-        return time.localtime().tm_min % 5 == 0
+    # def is_5_minutes(self):
+    #     return time.localtime().tm_min % 5 == 0
 
     def is_weekend(self):
         return time.localtime().tm_wday in [5, 6]
@@ -94,13 +94,13 @@ class TimeHandler:
     def is_day(self, day: str):
         return self._get_current_day().lower() == day.lower()
     
-    def is_hour(self, hour: int = None):
-        if hour is None:
-            return time.localtime().tm_min == 0
-        return time.localtime().tm_hour == hour and time.localtime().tm_min == 0
+    # def is_hour(self, hour: int = None):
+    #     if hour is None:
+    #         return time.localtime().tm_min == 0
+    #     return time.localtime().tm_hour == hour and time.localtime().tm_min == 0
     
-    def is_half_hour(self):
-        return time.localtime().tm_min == 30
+    # def is_half_hour(self):
+    #     return time.localtime().tm_min == 30
     
     def is_day_of_list(self, days):
         return self._get_current_day().lower() in [d.lower() for d in days]
@@ -122,5 +122,18 @@ class PreviousDate:
     def is_new_minute(self):
         return self.minute != time.localtime().tm_min
     
-    def  minutes_since(self):
+    def minutes_since(self):
         return (time.localtime().tm_hour - self.hour) * 60 + time.localtime().tm_min - self.minute
+    
+    def more_than_ago(self, minutes: int = 0, hours: int = 0, days: int = 0):
+        total_minutes = minutes + hours * 60 + days * 24 * 60
+        return self.minutes_since() > total_minutes
+    
+    def has_been_quarter_hour(self):
+        return self.minutes_since() >= 15
+    
+    def has_been_hour(self):
+        return self.minutes_since() >= 60
+    
+    def has_been_half_hour(self):
+        return self.minutes_since() >= 30
