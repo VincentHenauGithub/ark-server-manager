@@ -237,9 +237,6 @@ class RaidBaseManager(Manager):
         initial_vault_items = selected_vault.inventory.items.copy()
 
         add_loot(self, nr_of_turrets, self.save_tracker.get_save(), selected_vault, self.save_tracker.get_api(EquipmentApi), mixed=mixed)
-        
-        for item in initial_vault_items:
-            selected_vault.remove_item(item)
 
         self._print(f"[Loot]Added loot to vault {selected_vault.uuid} in base")
         self.__clean_other_vaults(base, selected_vault)

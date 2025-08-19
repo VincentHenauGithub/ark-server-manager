@@ -85,7 +85,7 @@ class ServerManagerScheduler:
 if __name__ == "__main__":
     scheduler = ServerManagerScheduler()
     scheduler._print("Starting server manager scheduler...")
-    ErrorCatch.set_catch_errors(False)
+    ErrorCatch.set_catch_errors(True)
 
     # save_path = Path("D:\\SteamLibrary\\steamapps\\common\\ARK Survival Ascended\\ShooterGame\\Saved\\SavedArksLocal\\Ragnarok_WP\\_Ragnarok_WP.ark")
     # save = AsaSave(save_path)

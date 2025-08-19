@@ -21,18 +21,18 @@ from .loot_configuration import add_loot
 from .save_tracker import SaveTracker
 
 CONFIG = [
-    { "enabled": True,  "type": "land",  "path": "skippy",   "added_levels": 68,  "base_levels": 255, "difficulty_level": 7,  "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_raptor       },
-    { "enabled": True,  "type": "land",  "path": "skippy",   "added_levels": 88,  "base_levels": 255, "difficulty_level": 20, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_raptor       },
-    { "enabled": True,  "type": "water", "path": "sicko",    "added_levels": 235, "base_levels": 255, "difficulty_level": 20, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_leedsichthys },
-    { "enabled": False,  "type": "land",  "path": "barny",    "added_levels": 57,  "base_levels": 255, "difficulty_level": 35, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_carnotaurus  },  
-    { "enabled": False,  "type": "land",  "path": "candle",   "added_levels": 218, "base_levels": 255, "difficulty_level": 45, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_fire_wyvern  },
-    { "enabled": False,  "type": "land",  "path": "slithers", "added_levels": 164, "base_levels": 255, "difficulty_level": 60, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_basilisk     },
-    { "enabled": False,  "type": "water", "path": "jaws",     "added_levels": 166, "base_levels": 255, "difficulty_level": 60, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_megalodon    },
-    { "enabled": False,  "type": "land",  "path": "roger",    "added_levels": 183, "base_levels": 255, "difficulty_level": 60, "mixed": True  , "blueprint": Classes.dinos.non_tameable.alpha.alpha_rex          },
-    { "enabled": False,  "type": "water", "path": "moose",    "added_levels": 160, "base_levels": 255, "difficulty_level": 60, "mixed": True  , "blueprint": Classes.dinos.non_tameable.alpha.alpha_mosasaurus   },
-    { "enabled": False,  "type": "both",  "path": "pincers",  "added_levels": 197, "base_levels": 255, "difficulty_level": 99, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_karkinos     },
-    { "enabled": False,  "type": "water", "path": "toetsie",  "added_levels": 212, "base_levels": 255, "difficulty_level": 99, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_tuso         },
-    { "enabled": False, "type": "land",  "path": "dodow",    "added_levels": 173, "base_levels": 43,  "difficulty_level": 99, "mixed": True  , "blueprint": Classes.dinos.non_tameable.event.dodo_wyvern        }
+    { "enabled": True,  "type": "land",  "path": "skippy",   "added_levels": 90,  "base_levels": 255, "difficulty_level": 7,  "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_raptor       },
+    { "enabled": True,  "type": "land",  "path": "skippy",   "added_levels": 170,  "base_levels": 255, "difficulty_level": 20, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_raptor       },
+    { "enabled": True,  "type": "water", "path": "sicko",    "added_levels": 255, "base_levels": 255, "difficulty_level": 20, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_leedsichthys },
+    { "enabled": False,  "type": "land",  "path": "barny",    "added_levels": 115,  "base_levels": 255, "difficulty_level": 35, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_carnotaurus  },  
+    { "enabled": False,  "type": "land",  "path": "candle",   "added_levels": 255, "base_levels": 255, "difficulty_level": 45, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_fire_wyvern  },
+    { "enabled": False,  "type": "land",  "path": "slithers", "added_levels": 255, "base_levels": 255, "difficulty_level": 60, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_basilisk     },
+    { "enabled": False,  "type": "water", "path": "jaws",     "added_levels": 255, "base_levels": 255, "difficulty_level": 60, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_megalodon    },
+    { "enabled": False,  "type": "land",  "path": "roger",    "added_levels": 255, "base_levels": 255, "difficulty_level": 60, "mixed": True  , "blueprint": Classes.dinos.non_tameable.alpha.alpha_rex          },
+    { "enabled": False,  "type": "water", "path": "moose",    "added_levels": 255, "base_levels": 255, "difficulty_level": 60, "mixed": True  , "blueprint": Classes.dinos.non_tameable.alpha.alpha_mosasaurus   },
+    { "enabled": False,  "type": "both",  "path": "pincers",  "added_levels": 255, "base_levels": 255, "difficulty_level": 99, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_karkinos     },
+    { "enabled": False,  "type": "water", "path": "toetsie",  "added_levels": 255, "base_levels": 255, "difficulty_level": 99, "mixed": False , "blueprint": Classes.dinos.non_tameable.alpha.alpha_tuso         },
+    { "enabled": False, "type": "land",  "path": "dodow",    "added_levels": 255, "base_levels": 43,  "difficulty_level": 99, "mixed": True  , "blueprint": Classes.dinos.non_tameable.event.dodo_wyvern        }
 ]
 
 class DinoBossManager(Manager):
