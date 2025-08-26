@@ -28,6 +28,7 @@ class PlayerActivityManager(Manager):
     def expose_players(self, p):
         players = self.rcon.get_active_players(p)
         last : PreviousDate = self.last_active_ts
+        
         if players is None:
             return None
         

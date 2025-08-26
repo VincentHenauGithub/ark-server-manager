@@ -99,9 +99,6 @@ class LootHouseManager(Manager):
 
         add_loot(None, amount, self.save_tracker.save, vault, self.save_tracker.equipment_api, mixed)
 
-        for item in initial_vault_items:
-            vault.remove_item(item)
-
         self.state.set_active(True)
         self.state.set_coordinates(coords)
         LocationController.add_active_location(location)

@@ -18,6 +18,7 @@ from submanagers.errorcatch import ErrorCatch
 from submanagers.loot_house_manager import LootHouseManager
 from submanagers.dino_boss_manager import DinoBossManager
 from submanagers.command_manager import CommandManager
+from submanagers.platform_dino_finder import PlatformDinoExposer
 
 FTP_CONF = "ftp_config.json"
 PlayerDataFiles.set_files(players_files_path=Path("players.json"))
@@ -43,7 +44,8 @@ class ServerManagerScheduler:
         self.loot_house_manager = LootHouseManager(self.save_tracker, self.rcon)
         self.dino_boss_manager = DinoBossManager(self.rcon, self.save_tracker)
         self.chat_logger = ChatLogger(self.rcon)
-        self.command_manager = CommandManager(self.rcon, self.save_tracker)
+        self.command_manager = CommandManager(self.rcon, self.save_tracker, self.raid_base_manager, self.dino_boss_manager)
+        self.platform_dino_exposer = PlatformDinoExposer(self.rcon, self.save_tracker)
 
     def _print(self, message):
         current_time = time.strftime("%H:%M:%S", time.localtime())
@@ -62,7 +64,6 @@ class ServerManagerScheduler:
             try:
                 if self.is_10_minute_interval():
                     self._print("Schedule alive, running submanagers...")
-
                 self.save_tracker.process()
                 self.raid_base_manager.process()
                 self.chat_logger.process()
@@ -74,6 +75,7 @@ class ServerManagerScheduler:
                 self.random_stat_manager.process()
                 self.dino_boss_manager.process()
                 self.command_manager.process()
+                self.platform_dino_exposer.process()
 
             except Exception as e:
                 self._print(f"Error in server manager scheduler: {e}")
@@ -85,7 +87,7 @@ class ServerManagerScheduler:
 if __name__ == "__main__":
     scheduler = ServerManagerScheduler()
     scheduler._print("Starting server manager scheduler...")
-    ErrorCatch.set_catch_errors(True)
+    ErrorCatch.set_catch_errors(False)
 
     # save_path = Path("D:\\SteamLibrary\\steamapps\\common\\ARK Survival Ascended\\ShooterGame\\Saved\\SavedArksLocal\\Ragnarok_WP\\_Ragnarok_WP.ark")
     # save = AsaSave(save_path)

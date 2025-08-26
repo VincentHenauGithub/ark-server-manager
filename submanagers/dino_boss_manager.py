@@ -46,6 +46,9 @@ class DinoBossManager(Manager):
 
         self.menagerie_state = MenagerieState()
 
+    def get_nr_of_dinos(self) -> int:
+        return self.menagerie_state.number_active
+
     def __get_dino(self, menagerie_state: MenagerieMemberState) -> Union[TamedDino, ]:
         """
         Returns the dino associated with the given menagerie state.

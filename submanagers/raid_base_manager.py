@@ -107,6 +107,9 @@ class RaidBaseManager(Manager):
 
         self.__save_data(self.data_path)
 
+    def get_nr_of_bases(self) -> int:
+        return len(self.data_["active_bases"])
+
     def __init_data(self, path: Path):
         if not path.exists():
             return {
@@ -119,12 +122,14 @@ class RaidBaseManager(Manager):
         with open(path, 'w') as f:
             json.dump(self.data_, f, indent=4)
 
-    def __is_base_raided(self, coords: MapCoords, owner_tribe_id: int, radius: float = 1, map: ArkMap = ArkMap.RAGNAROK) -> bool:
+    def __is_base_raided(self, coords: MapCoords, owner_tribe_name: str, radius: float = 1, map: ArkMap = ArkMap.RAGNAROK) -> bool:
         structures = self.save_tracker.get_api(BaseApi).get_at_location(map, coords, radius)
 
         all_vaults = [structure for _, structure in structures.items() if structure.object.blueprint == Classes.structures.placed.utility.vault]
+        self._print(f"Nr of vaults found: {len(all_vaults)}")
         for vault in all_vaults:
-            if vault.owner.tribe_id == owner_tribe_id:
+            self._print(f"Vault owner tribe name: {vault.owner.tribe_name}, checking against {owner_tribe_name}")
+            if vault.owner.tribe_name == owner_tribe_name:
                 if vault.inventory is not None and len(vault.inventory.items) > 0:
                     return False
                 
@@ -303,7 +308,7 @@ class RaidBaseManager(Manager):
         for base in self.data_["active_bases"]:
             file_path = self.base_path / "locations" / \
                 "ragnarok" / base["config"]["location"]
-            if self.__is_base_raided(self.__get_main_location(file_path), owner_tribe_id=base["tribe_id"]) and not base["is_raided"]:
+            if self.__is_base_raided(self.__get_main_location(file_path), owner_tribe_name=base["owner"]["name"]) and not base["is_raided"]:
                 base["is_raided"] = True
                 self._print(f"[Raided]Base at {base['location']} is raided")
                 self._print(f"[Raided]{base['owner']['raided']}")
@@ -357,7 +362,7 @@ class RaidBaseManager(Manager):
 
             # spawn up to 5 bases
             if len(self.data_["active_bases"]) == 0:
-                for _ in range(1):
+                for _ in range(5):
                     cfg = self.compose_base()
                     self.spawn_base(cfg)
 

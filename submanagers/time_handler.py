@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 
 class TimeHandler:
     def __init__(self, weekStartup=0, weekShutdown=0, weekendStartup=0, weekendShutdown=0):
@@ -106,34 +107,41 @@ class TimeHandler:
         return self._get_current_day().lower() in [d.lower() for d in days]
     
 class PreviousDate:
-    def __init__(self):
-        self.minute = time.localtime().tm_min
-        self.hour = time.localtime().tm_hour
-        self.date = time.localtime().tm_mday
-        self.month = time.localtime().tm_mon
-        self.year = time.localtime().tm_year
+    def __init__(self, tz=None):
+        # tz can be something like zoneinfo.ZoneInfo("Europe/Brussels"); default is local time
+        self.tz = tz
+        self._dt = datetime.now(tz)
 
+    def _now(self):
+        return datetime.now(self.tz)
+
+    # ---- “new” boundaries (since the moment this object was created/reset) ----
     def is_new_day(self):
-        return self.date != time.localtime().tm_mday or self.month != time.localtime().tm_mon or self.year != time.localtime().tm_year
-    
+        now = self._now()
+        return self._dt.date() != now.date()
+
     def is_new_hour(self):
-        return self.hour != time.localtime().tm_hour
-    
+        now = self._now()
+        return self._dt.replace(minute=0, second=0, microsecond=0) != now.replace(minute=0, second=0, microsecond=0)
+
     def is_new_minute(self):
-        return self.minute != time.localtime().tm_min
-    
+        now = self._now()
+        return self._dt.replace(second=0, microsecond=0) != now.replace(second=0, microsecond=0)
+
+    # ---- elapsed time helpers (robust across midnight) ----
     def minutes_since(self):
-        return (time.localtime().tm_hour - self.hour) * 60 + time.localtime().tm_min - self.minute
-    
+        delta = self._now() - self._dt
+        return int(delta.total_seconds() // 60)
+
     def more_than_ago(self, minutes: int = 0, hours: int = 0, days: int = 0):
         total_minutes = minutes + hours * 60 + days * 24 * 60
         return self.minutes_since() > total_minutes
-    
+
     def has_been_quarter_hour(self):
         return self.minutes_since() >= 15
-    
-    def has_been_hour(self):
-        return self.minutes_since() >= 60
-    
+
     def has_been_half_hour(self):
         return self.minutes_since() >= 30
+
+    def has_been_hour(self):
+        return self.minutes_since() >= 60
