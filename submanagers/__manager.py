@@ -2,9 +2,10 @@ import os
 import shutil
 import time
 from .errorcatch import ErrorCatch
+from pathlib import Path
 
-OLD_LOG_DIR = f"logs\\_old"
-LOG_FILE_NAME = f"logs\\{time.strftime('%Y-%m-%d_%H-%M-%S')}.log"
+OLD_LOG_DIR = Path("logs") / "_old"
+LOG_FILE_NAME = Path("logs") / f"{time.strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
 class Manager:
     def __init__(self, process, name: str = "", interval: int = 60):
@@ -21,7 +22,7 @@ class Manager:
             f.write(f"Log started at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(self.start_time))}\n")
 
     def _stash_old_logs(self):
-        LOG_FILE = LOG_FILE_NAME.split("\\")[-1]
+        LOG_FILE = LOG_FILE_NAME.name
         if not os.path.exists(OLD_LOG_DIR):
             os.makedirs(OLD_LOG_DIR)
         for file in os.listdir("logs"):
