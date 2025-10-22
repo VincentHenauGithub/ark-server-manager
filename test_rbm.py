@@ -7,19 +7,29 @@ from submanagers.save_tracker import SaveTracker
 from submanagers.raid_base_manager import RaidBaseManager
 from arkparse.logging import ArkSaveLogger
 
+from arkparse import Classes
+from arkparse.api import StructureApi
+
 FTP_CONF = "ftp_config.json"
 PlayerDataFiles.set_files(players_files_path=Path("players.json"))
 MAP = ArkMap.RAGNAROK
 store_path = Path("D:\\SteamLibrary\\steamapps\\common\\ARK Survival Ascended\\ShooterGame\\Saved\\SavedArksLocal\\Ragnarok_WP\\Ragnarok_WP.ark")
 save_path = Path("D:\\SteamLibrary\\steamapps\\common\\ARK Survival Ascended\\ShooterGame\\Saved\\SavedArksLocal\\Ragnarok_WP\\_Ragnarok_WP.ark")
 
-
+store_path = Path.cwd() / "Ragnarok_WP.ark"
 if __name__ == "__main__":
     ArkSaveLogger.set_log_level(ArkSaveLogger.LogTypes.OBJECTS, False)
     rcon = RconApi.from_config("rcon_config.json")
     save_tracker = SaveTracker(ftp_config=FTP_CONF, map=MAP)
     raid_base_manager = RaidBaseManager(rcon, save_tracker, Path.cwd() / "bases")
     save = AsaSave(save_path)
-    save_tracker.set_save(save)
-    raid_base_manager.test_full()
+    # save_tracker.set_save(save)
+    raid_base_manager.main()
+    save.store_db(store_path)
+
+    # sapi: StructureApi = save_tracker.structure_api
+
+    # for key, structure in sapi.get_all().items():
+    #     if structure.object.blueprint == Classes.structures.placed.tek.generator or structure.object.blueprint == Classes.structures.placed.metal.generator:
+    #         structure.object.print_properties()
 

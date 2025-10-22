@@ -161,7 +161,9 @@ class DinoBossManager(Manager):
 
         self._print(f"After evaluation, there are {self.menagerie_state.number_active} active members")
 
-        if self.menagerie_state.number_active == 0 and time.localtime().tm_hour == 5:
+        if self.menagerie_state.number_active == 0 and time.localtime().tm_hour == 5 and self.time_handler._get_current_day() == "Saturday":
+            self.save_tracker.stop_and_update()
+            
             self._print("All dread monsters have been slain, spawning new ones...")
             while self.menagerie_state.number_active < 2:
                 mem = self.spawn_new()

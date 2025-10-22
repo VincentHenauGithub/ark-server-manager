@@ -5,6 +5,7 @@ import time
 
 from arkparse import Classes
 from arkparse.api.base_api import Base
+from arkparse.api import PlayerApi
 from arkparse.api.rcon_api import RconApi
 from arkparse.object_model.misc.object_owner import ObjectOwner
 from arkparse.object_model.structures import StructureWithInventory
@@ -54,9 +55,25 @@ class LoothouseState:
         with open(self.__STATUS_PATH, 'w') as file:
             json.dump(self.state, file, indent=4)
 
+    def tribe_id(self, player_api: PlayerApi) -> int:
+        id_ = self.state.get("tribe_id", None)
+        if id_ is None:
+            id_ = player_api.generate_tribe_id()
+            self.state["tribe_id"] = id_
+            with open(self.__STATUS_PATH, 'w') as file:
+                json.dump(self.state, file, indent=4)
+        return id_
+
+    def player_id(self, player_api: PlayerApi) -> int:
+        id_ = self.state.get("player_id", None)
+        if id_ is None:
+            id_ = player_api.generate_player_id()
+            self.state["player_id"] = id_
+            with open(self.__STATUS_PATH, 'w') as file:
+                json.dump(self.state, file, indent=4)
+        return id_
+
 class LootHouseManager(Manager):
-    __LOOTHOUSE_TRIBE_ID = 77
-    __LOOTHOUSE_PLAYER_ID = 77
     __MIN_TURRETS = 0
     __MAX_TURRETS = 40
     __LOOTHOUSE_PATH = Path(__file__).parent.parent / "loothouse" / "loothouse"
@@ -70,11 +87,17 @@ class LootHouseManager(Manager):
         self.last_timestamp: PreviousDate = None
 
         self.owner: ObjectOwner = ObjectOwner()
-        self.owner.set_tribe(self.__LOOTHOUSE_TRIBE_ID, "The administration")
-        self.owner.set_player(self.__LOOTHOUSE_PLAYER_ID)
+
+        p_api = self.save_tracker.player_api
+        self.tribe_id = self.state.tribe_id(p_api)
+        self.player_id = self.state.player_id(p_api)
+        self.owner.set_tribe(self.tribe_id, "The administration")
+        self.owner.set_player(self.player_id)
 
     def _spawn(self):
         self._print("Loothouse is not active, setting up...")
+        self.save_tracker.stop_and_update()
+        
         _, location, coords = LocationController.get_random_unblocked_location(self.save_tracker.base_api, radius=1, map=self.save_tracker.map)
         base: Base = self.save_tracker.base_api.import_base(self.__LOOTHOUSE_PATH, LocationController.get_loc_actor_transform(location))
 
@@ -101,16 +124,15 @@ class LootHouseManager(Manager):
 
         self.state.set_active(True)
         self.state.set_coordinates(coords)
+        self.state.set_removed(False)
         LocationController.add_active_location(location)
         self._print(f"Loothouse is set up at {coords}")
-
-        self.save_tracker.put_save()
 
     def _refresh_active(self) -> bool:
         if self.state.is_active:
             b_api = self.save_tracker.base_api
-            base: Base = b_api.get_base_at(self.state.coordinates, radius=0.1, owner_tribe_id=self.__LOOTHOUSE_TRIBE_ID)
-            
+            base: Base = b_api.get_base_at(self.state.coordinates, radius=0.1, owner_tribe_name="The administration")
+
             vault: StructureWithInventory = None
             if base is not None:
                 for _, structure in base.structures.items():
@@ -122,22 +144,31 @@ class LootHouseManager(Manager):
                 self.state.set_active(False)
             else:
                 self._print(f"Loothouse is still active at {self.state.coordinates}")
+                self._report_status()
         else:
             self._print("Loothouse is not active... No refresh needed.")
 
     def _update_insertion(self):
+        update = False
         if not self.state.is_active and not self.state.is_removed:
             self._print("Removing remains of raided loothouse...")
-            self.save_tracker.base_api.remove_at_location(self.save_tracker.map, self.state.coordinates, radius=0.1, owner_tribe_id=self.__LOOTHOUSE_TRIBE_ID)
+            self.save_tracker.base_api.remove_at_location(self.save_tracker.map, self.state.coordinates, radius=0.1, owner_tribe_name="The administration")
             self.state.set_removed(True)
-        
-        if not self.state.is_active:
+            update = True
+
+        if not self.time_handler._get_current_day() == "Saturday":
+            self._print("It's not Saturday, no update needed.")
+        elif not self.state.is_active:
             self._spawn()
+            update = True
+
+        if update:
+            self.save_tracker.put_save()
 
     def _report_status(self):
         active_players = len(self.rcon.get_active_players())
-        if active_players > 3:
-            message = f"There are {active_players} players online. Checking loothouse at {self.state.coordinates}..."
+        if active_players >= 3:
+            message = f"There is definitely not a vault full of loot at {self.state.coordinates}, no need to go there"
             self._print(message)
             self.rcon.send_message(message)
         else:
@@ -151,6 +182,5 @@ class LootHouseManager(Manager):
             self._print("It's 5 AM, updating loothouse in save...")
             self._update_insertion()
 
-        self._report_status()
-
-
+        if not time.localtime().tm_hour == 5:
+            self._print("It's not 5 AM, no update needed.")

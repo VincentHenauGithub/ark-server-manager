@@ -42,7 +42,6 @@ class IntroLootState:
 state = IntroLootState()
 MAP = ArkMap.RAGNAROK
 
-time.sleep(60*30)
 while True:
     rcon: RconApi = RconApi.from_config("../../rcon_config.json")
 
@@ -51,9 +50,9 @@ while True:
         print(f"Revealing stage 1 location")
         pincode = s1["pincode"]
         mapcoords = ActorTransform.from_json(s1["location"]).as_map_coords(MAP)
-        print(f"THE ADMINISTRATION PROVIDES! The hut at {mapcoords} will be revealed in 5 minutes")
-        rcon.send_message(f"THE ADMINISTRATION PROVIDES! The pincode of the hut at {mapcoords} will be revealed in 5 minutes")
-        time.sleep(5*60)
+        print(f"THE ADMINISTRATION PROVIDES! The hut at {mapcoords} will be revealed in 10 minutes")
+        rcon.send_message(f"THE ADMINISTRATION PROVIDES! The pincode of the hut at {mapcoords} will be revealed in 10 minutes")
+        time.sleep(10*60)
         print(f"Revealing pincode: {pincode}")
         rcon.send_message(f"Pincode is: {pincode}")
         state.set_revealed(s1["id"])
@@ -64,8 +63,8 @@ while True:
             pincode = s2["pincode"]
             mapcoords = ActorTransform.from_json(s2["location"]).as_map_coords(MAP)
             print(f"sending leading message for stage 2")
-            rcon.send_message(f"THE ADMINISTRATION PROVIDES! The pincode of the hut at {mapcoords} will be revealed in 5 minutes")
-            time.sleep(5*60)
+            rcon.send_message(f"THE ADMINISTRATION PROVIDES! The pincode of the hut at {mapcoords} will be revealed in 10 minutes")
+            time.sleep(10*60)
             print(f"Revealing stage 2 location")
             rcon.send_message(f"Pincode is: {pincode}")
 

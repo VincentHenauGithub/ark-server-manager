@@ -3,7 +3,7 @@ from pathlib import Path
 from arkparse.enums import ArkMap
 from arkparse import AsaSave
 from arkparse.api.base_api import BaseApi, Base
-from arkparse.api import EquipmentApi, PlayerApi
+from arkparse.api import EquipmentApi, PlayerApi, StructureApi
 from arkparse.object_model.misc.object_owner import ObjectOwner
 from arkparse.object_model.structures import StructureWithInventory
 from arkparse.ftp.ark_ftp_client import ArkFtpClient
@@ -51,51 +51,60 @@ FTP_CLIENT = ArkFtpClient.from_config("../../ftp_config.json", MAP)
 save_content = FTP_CLIENT.download_save_file(map=MAP)  # download the save file
 # save_path  = Path.cwd() / "Ragnarok_WP.ark"
 save = AsaSave(contents=save_content)   # load the save file
-state = IntroLootState()
-base_path = Path.cwd() / "fn_loothouse"
 
-b_api = BaseApi(save, MAP)
-eq_api = EquipmentApi(save)
-p_api = PlayerApi(save)
+s_api = StructureApi(save)
+all = s_api.get_all()
+for key, struc in all.items():
+    if struc.owner.tribe_name == "The administration" and struc.object.blueprint == Classes.structures.placed.stone.door:
+        print(struc.location)
+        print(struc.object.get_property_value("CurrentPinCode"))
+        print(struc.location.as_map_coords(MAP))
+    
+# state = IntroLootState()
+# base_path = Path.cwd() / "fn_loothouse"
 
-o: ObjectOwner = ObjectOwner()
-o.set_tribe(p_api.generate_tribe_id(), "The administration")
-o.set_player(p_api.generate_player_id())
+# b_api = BaseApi(save, MAP)
+# eq_api = EquipmentApi(save)
+# p_api = PlayerApi(save)
 
-print("Loothouse is not active, setting up...")
-for loc in state.state:
-    spawn = ActorTransform.from_json(loc["location"])
-    pincode = random.randint(1000, 9999)
-    state.set_pincode(loc["id"], pincode)
-    state.set_revealed(loc["id"], False)
+# o: ObjectOwner = ObjectOwner()
+# o.set_tribe(p_api.generate_tribe_id(), "The administration")
+# o.set_player(p_api.generate_player_id())
 
-    base: Base = b_api.import_base(base_path, spawn)
+# print("Loothouse is not active, setting up...")
+# for loc in state.state:
+#     spawn = ActorTransform.from_json(loc["location"])
+#     pincode = random.randint(1000, 9999)
+#     state.set_pincode(loc["id"], pincode)
+#     state.set_revealed(loc["id"], False)
 
-    vault: StructureWithInventory = None
-    for key, structure in base.structures.items():
-        if structure.object.blueprint == Classes.structures.placed.utility.small_storage_box:
-            vault = structure
-            break
-    initial_vault_items = vault.inventory.items.copy()
+#     base: Base = b_api.import_base(base_path, spawn)
 
-    for structure in base.structures.values():
-        structure.set_max_health(999999999)
-        structure.heal()
+#     vault: StructureWithInventory = None
+#     for key, structure in base.structures.items():
+#         if structure.object.blueprint == Classes.structures.placed.utility.small_storage_box:
+#             vault = structure
+#             break
+#     initial_vault_items = vault.inventory.items.copy()
 
-    for structure in base.structures.values():
-        if structure.object.blueprint == Classes.structures.placed.stone.door:
-            structure.set_pincode(pincode)
+#     for structure in base.structures.values():
+#         structure.set_max_health(999999999)
+#         structure.heal()
 
-    # p_api = PlayerApi(save)
-    # player = p_api.players[0]
+#     for structure in base.structures.values():
+#         if structure.object.blueprint == Classes.structures.placed.stone.door:
+#             structure.set_pincode(pincode)
 
-    base.set_owner(o)
+#     # p_api = PlayerApi(save)
+#     # player = p_api.players[0]
 
-    add_loot(None, 1, save, vault, eq_api, False)
+#     base.set_owner(o)
 
-    for item in initial_vault_items:
-        vault.remove_item(item)
+#     add_loot(None, 1, save, vault, eq_api, False)
 
-save.store_db(Path.cwd() / "_Ragnarok_WP.ark")
-FTP_CLIENT.remove_save_file(MAP)
-FTP_CLIENT.upload_save_file(Path.cwd() / "_Ragnarok_WP.ark", map=MAP)
+#     for item in initial_vault_items:
+#         vault.remove_item(item)
+
+# save.store_db(Path.cwd() / "_Ragnarok_WP.ark")
+# FTP_CLIENT.remove_save_file(MAP)
+# FTP_CLIENT.upload_save_file(Path.cwd() / "_Ragnarok_WP.ark", map=MAP)

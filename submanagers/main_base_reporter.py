@@ -16,7 +16,7 @@ from .save_tracker import SaveTracker
 
 class MainBaseReporter(Manager):
     def __init__(self, save_tracker: SaveTracker, rconapi: RconApi):
-        super().__init__(self.__process, "main base reporter", 977)
+        super().__init__(self.__process, "main base reporter", 3521)
         self.rcon: RconApi = rconapi
         self.save_tracker: SaveTracker = save_tracker
 

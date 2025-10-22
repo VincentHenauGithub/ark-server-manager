@@ -5,7 +5,8 @@ from pathlib import Path
 
 from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkMap
 from arkparse.api.player_api import PlayerApi
-from arkparse import ArkPlayer, AsaSave
+from arkparse import AsaSave
+from arkparse.player.ark_player import ArkPlayer
 from arkparse.logging import ArkSaveLogger
 
 argparser = argparse.ArgumentParser()

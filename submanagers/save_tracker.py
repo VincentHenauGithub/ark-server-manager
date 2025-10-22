@@ -1,9 +1,11 @@
 from pathlib import Path
 from arkparse import AsaSave
+from uuid import uuid4
 import time
 from .__manager import Manager
 from arkparse.ftp.ark_ftp_client import ArkFtpClient, ArkFile, ArkMap
 from arkparse.api import DinoApi, EquipmentApi, StackableApi, StructureApi, PlayerApi, BaseApi
+from .nitrado_api import NitradoClient
 
 class SaveTracker(Manager):
     def __init__(self, ftp_config: str, map: ArkMap):
@@ -24,6 +26,7 @@ class SaveTracker(Manager):
 
         self._prev_save_info: ArkFile = None
         self.reconnect()
+        self.get_save()
 
     @property
     def save(self) -> AsaSave:
@@ -88,16 +91,71 @@ class SaveTracker(Manager):
             self.__reconfigure()
         return self._save
     
+    def stop_and_update(self):
+        self._print("Stopping server")
+        NitradoClient().stop_server()
+        self._print(f"Server status: {NitradoClient().get_status()}")
+
+        time.sleep(60 * 4) # wait 10 minutes to ensure the server has fully stopped and released the file lock
+
+        #re-download
+        self._print("Re-downloading save file from FTP...")
+        self.__reconfigure()
+        self._print("Save file re-downloaded.")
+        
+    
     def put_save(self):
-        self._save.store_db(Path.cwd() / "Ragnarok_WP.ark")
+        uuid = uuid4()
 
         if self.ftp_client is None:
             raise ValueError("FTP client is not connected. Call connect() before uploading the save file.")
         
-        self._print("Removing old save file from FTP...")
-        self.ftp_client.remove_save_file(self.map)
-        self._print("Uploading new save file to FTP...")
-        self.ftp_client.upload_save_file(Path.cwd() / "Ragnarok_WP.ark", map=self.map)
+        self._save.store_db(Path.cwd() / f"Ragnarok_{uuid}.ark")
+        
+        done = False
+        attempts = 0
+
+        while not done and attempts < 10:
+            try:
+                self.reconnect()
+                self._print(f"Removing old save file from FTP... (attempt {attempts}/10)")
+                self.ftp_client.remove_save_file(self.map)
+                done = True
+            except Exception as e:
+                attempts += 1
+                self._print(f"Error removing old save file: {e}, retrying in 10 seconds...")
+                time.sleep(10)
+
+        if not done:
+            self._print("Failed to remove old save file after 10 attempts, aborting upload.")
+            return
+
+        done = False
+        attempts = 0
+
+        while not done and attempts < 10:
+            try:
+                self.reconnect()
+                self._print(f"Uploading new save file to FTP... (attempt {attempts}/10)")
+                self.ftp_client.upload_save_file(Path.cwd() / f"Ragnarok_{uuid}.ark", map=self.map)
+                done = True
+            except Exception as e:
+                attempts += 1
+                self._print(f"Error uploading new save file: {e}, retrying in 10 seconds...")
+                time.sleep(10)
+
+        if not done:
+            self._print("Failed to upload new save file after 10 attempts, aborting.")
+            return
+
+        self._print("Starting server")
+        NitradoClient().start_server()
+        self._print(f"Server status: {NitradoClient().get_status()}")
+
+        time.sleep(60 * 2)
+
+        # # Delete local copy
+        # Path.cwd().joinpath(f"Ragnarok_{uuid}.ark").unlink(missing_ok=True)
 
         self._print("Save file uploaded successfully.")
 
@@ -141,6 +199,7 @@ class SaveTracker(Manager):
 
     def __reconfigure(self):
         self.ftp_client = ArkFtpClient.from_config(self.ftp_config, self.map)
+        self.ftp_client.connect()
         info = self.ftp_client.check_save_file(self.map)
         if len(info) == 0:
             self._print("No save file found on FTP, skipping reconfiguration.")
@@ -164,6 +223,9 @@ class SaveTracker(Manager):
                 self._prev_save_info = save_file_info
 
                 self._save = AsaSave(contents=self.ftp_client.download_save_file(map=self.map), read_only=False)
+
+                self._print("Save file downloaded, reinitializing APIs... (save game time=" + str(self._save.save_context.game_time) + ")")
+
                 self.__init_apis(self._save)
 
             self.reconnect()

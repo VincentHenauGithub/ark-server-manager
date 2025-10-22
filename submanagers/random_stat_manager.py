@@ -108,17 +108,21 @@ class NumberOfDinosOfType(RandomStat):
         "cat": [Dinos.shoulder_pets.cat],
         "dodo": [Dinos.abberant.dodo, Dinos.dodo],
         "reaper queen": [Dinos.reaper_queen],
-        "death worms": [Dinos.non_tameable.death_worm]
+        "death worms": [Dinos.non_tameable.death_worm],
+        "titanoboa": [Dinos.titanoboa],
     }
 
     dino_type: str
 
-    def _get_value(self):
-        self.dino_type = list(self.DINO_BPS.keys())[random.randint(0, len(self.DINO_BPS.keys()) - 1)]
+    def _get_value(self, forced_type: str = None):
+        if forced_type:
+            self.dino_type = forced_type
+        else:
+            self.dino_type = list(self.DINO_BPS.keys())[random.randint(0, len(self.DINO_BPS.keys()) - 1)]
         self.value = len(self.save_tracker.get_api(DinoApi).get_all_wild_by_class(self.DINO_BPS[self.dino_type]))
 
-    def get_message(self) -> str:
-        self._get_value()
+    def get_message(self, forced_type: str = None) -> str:
+        self._get_value(forced_type)
         if self.dino_type == "giganotosaurus":
             if self.value > 0:
                 return f"There are {self.value} gigas on the map, don't get eaten!"
@@ -156,6 +160,11 @@ class NumberOfDinosOfType(RandomStat):
                 return f"There are {self.value} death worms on the map, stay away from the desert!"
             else:
                 return "No death worms on the map"
+        elif self.dino_type == "titanoboa":
+            if self.value > 0:
+                return f"Better get back on your boat Davy Jones! There are {self.value} titanoboa ready to knock you out!"
+            else:
+                return "No titanoboa on the map, lucky Davy!"
 
 class NumberOfLv150WildDinos(RandomStat):
     def _get_value(self):
@@ -405,7 +414,7 @@ class NumberOfSleepingBags(RandomStat):
 
 class NrOfBabiesWildDinos(RandomStat):
     def _get_value(self):
-        self.value = len(self.save_tracker.dino_api.get_all_babies(include_tamed=False))
+        self.value = len(self.save_tracker.dino_api.get_all_babies(include_tamed=False, include_wild=True))
     
     def get_message(self) -> str:
         self._get_value()
@@ -559,16 +568,16 @@ class RandomStatManager(Manager):
         
     def __process(self, _: int):
         
-        # ideas: reasons of death, most bps
+        # ideaself.: reasons of death, most bps
 
         # Test
-        # for stat in self.stats:
-        #     stat._get_value()
-        #     self._print(stat.get_message())
+        for stat in self.stats:
+            stat._get_value()
+            self._print(stat.get_message())
+
 
         stat = self.stats[random.randint(0, len(self.stats) - 1)]
         message = stat.get_message()
         if message != "":
             self._print(message)
             self.rcon.send_message(message)
-

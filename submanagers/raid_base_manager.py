@@ -17,6 +17,9 @@ from .time_handler import TimeHandler, PreviousDate
 from .loot_configuration import add_loot
 from .save_tracker import SaveTracker
 from .locations import LocationController
+from .nitrado_api import NitradoClient
+from arkparse.object_model.ark_game_object import ArkGameObject
+from arkparse.logging import ArkSaveLogger
 
 BASE_SIZES = [
     {
@@ -30,7 +33,7 @@ BASE_SIZES = [
     {
         "min_turrets": 15,
         "max_turrets": 30,
-        "active": False, 
+        "active": True, 
         "types": [
             "starter",
             "medium"
@@ -39,7 +42,7 @@ BASE_SIZES = [
     {
         "min_turrets": 30,
         "max_turrets": 40,
-        "active": False, 
+        "active": True, 
         "types": [
             "starter",
             "medium"
@@ -92,7 +95,7 @@ BASE_SIZES = [
 
 class RaidBaseManager(Manager):
     def __init__(self, rconapi: RconApi, save_tracker: SaveTracker, base_path: Path):
-        super().__init__(self.__process, "raid base manager", 1717)
+        super().__init__(self.__process, "raid base manager", 450)
         self.rcon: RconApi = rconapi
 
         self.save_tracker: SaveTracker = save_tracker
@@ -104,6 +107,7 @@ class RaidBaseManager(Manager):
         self.base_path = base_path
         self.config: dict = json.load(open(base_path / "config.json", 'r'))
         self.last_timestamp: PreviousDate = None
+        self.last_message: PreviousDate = None
 
         self.__save_data(self.data_path)
 
@@ -246,22 +250,27 @@ class RaidBaseManager(Manager):
         self._print(f"[Loot]Added loot to vault {selected_vault.uuid} in base")
         self.__clean_other_vaults(base, selected_vault)
 
-    def __spawn_section(self, path: Path, loc: ActorTransform, owner: dict):
+    def __spawn_section(self, path: Path, loc: ActorTransform, owner: ObjectOwner):
         self._print("[Spawn]Importing section from {path}")
         base: Base =  self.save_tracker.get_api(BaseApi).import_base(path, location=loc)
         self._print(f"[Spawn]Section imported at {loc.as_map_coords(ArkMap.RAGNAROK)}")
+
+        for _, structure in base.structures.items():
+            if structure.object.blueprint == Classes.structures.placed.metal.generator:
+                structure.object.change_class(Classes.structures.placed.tek.generator, structure.binary)
+                structure.update_binary()
+                structure.object = ArkGameObject(uuid=structure.uuid, blueprint=Classes.structures.placed.tek.generator, binary_reader=structure.binary)
+                structure.owner.properties = structure.object
+                self._print("[Spawn]Generator converted to TEK")
+
         base.set_turret_ammo(self.save_tracker.get_save(), bullets_in_auto=1400, bullets_in_heavy=2500, shards_in_tek=1500)
         self._print("[Spawn]Turret ammo padded")
         base.set_fuel_in_generators(self.save_tracker.get_save(), nr_of_element=3, nr_of_gasoline=30)
         self._print("[Spawn]Element added to generators")
-        o: ObjectOwner = ObjectOwner()
-        tribe_id = self.save_tracker.get_api(PlayerApi).generate_tribe_id()
-        player_id = self.save_tracker.get_api(PlayerApi).generate_player_id()
-        o.set_tribe(tribe_id, owner["name"])
-        o.set_player(player_id)
-        base.set_owner(o)
-        self._print(f"[Spawn]Owner set to {owner['name']}")
-        return base, tribe_id, player_id
+        
+        base.set_owner(owner)
+        self._print(f"[Spawn]Owner set to {owner.tribe_name} ({owner.tribe_id})")
+        return base
 
     def spawn_base(self, base_config: dict, map: ArkMap = ArkMap.RAGNAROK):
         base_status = {
@@ -274,12 +283,17 @@ class RaidBaseManager(Manager):
         }
         turrets = base_config["total_turrets"]
         loc_config: dict = base_config["locations"]
+        o: ObjectOwner = ObjectOwner()
+        tribe_id = self.save_tracker.get_api(PlayerApi).generate_tribe_id()
+        player_id = self.save_tracker.get_api(PlayerApi).generate_player_id()
+        o.set_tribe(tribe_id, base_status["owner"]["name"])
+        o.set_player(player_id)
         for loc in loc_config.keys():
             path = loc_config[loc]["selected_path"]
             actor_transform = ActorTransform.from_json(
                 loc_config[loc]["location"])
-            base, tribe_id, player_id = self.__spawn_section(
-                path, actor_transform, base_status["owner"])
+            base = self.__spawn_section(
+                path, actor_transform, o)
             self._print("[Spawn]Spawned base section")
             base_status["tribe_id"] = tribe_id
             base_status["player_id"] = player_id
@@ -299,9 +313,9 @@ class RaidBaseManager(Manager):
             loc: str = base["location"]
             x, y = map(float, loc.strip("()").split(", "))
             coords = MapCoords(x, y)
-            base: Base =  self.save_tracker.get_api(BaseApi).get_base_at(coords, 2, owner_tribe_id=base["tribe_id"])
+            base: Base =  self.save_tracker.get_api(BaseApi).get_base_at(coords, 2, owner_tribe_name=base["owner"]["name"])
             print(f"Nr of items in base: {len(base.structures)}")
-            nr = base.set_fuel_in_generators(self.save_tracker.get_save(), nr_of_element=3, nr_of_gasoline=30)
+            nr = base.set_fuel_in_generators(self.save_tracker.get_save(), nr_of_element=3, nr_of_gasoline=277)
             self._print(f"[Spawn]Fuel added to {nr} generators at {coords}")
 
     def __check_raided(self):
@@ -328,7 +342,7 @@ class RaidBaseManager(Manager):
                 coords = MapCoords(x, y)
                 self._print(f"[Raided]Removing base at {coords}")
                 self.save_tracker.get_api(BaseApi).remove_at_location(
-                    ArkMap.RAGNAROK, coords, 2, owner_tribe_id=base["tribe_id"])
+                    ArkMap.RAGNAROK, coords, 2, owner_tribe_name=base["owner"]["name"])
                 data_copy.remove(base)
                 LocationController.remove_active_location(base["config"]["location"])
         self.data_["active_bases"] = data_copy
@@ -353,7 +367,9 @@ class RaidBaseManager(Manager):
         # check if any bases have been raided
         self.__check_raided()
 
-        if time.localtime().tm_hour == 5 and (self.last_timestamp is None or self.last_timestamp.has_been_hour()):
+        if True and (time.localtime().tm_hour == 5 and (self.last_timestamp is None or self.last_timestamp.has_been_hour())):
+            self.save_tracker.stop_and_update()
+
             self.last_timestamp = PreviousDate()
             self._print("[Main]Spawning and updating bases")
             
@@ -361,27 +377,36 @@ class RaidBaseManager(Manager):
             self.__remove_raided()
 
             # spawn up to 5 bases
-            if len(self.data_["active_bases"]) == 0:
+            if len(self.data_["active_bases"]) <= 1:
                 for _ in range(5):
                     cfg = self.compose_base()
                     self.spawn_base(cfg)
 
             # Pad generators
             self.__pad_active_base_generators()
+
             self.__put_save()
 
         nr_online = len(self.rcon.get_active_players())
 
         # Report active bases
+        minutes_since = 150 if self.last_message is None else self.last_message.minutes_since()
+        prnt = False
+        self._print(f"[Active]Minutes since last message: {minutes_since}; {'printing' if minutes_since > 127 else 'not printing'}")
+        if minutes_since > 127:
+            self.last_message = PreviousDate()
+            prnt = True
+
         for base in self.data_["active_bases"]:
             if not base["is_raided"]:
                 self._print(f"[Active]{base['owner']['message']}{base['location']}")
                 message = f"{base['owner']['message']}{base['location']}"
                 self._print_tp_command(base["config"])
-                if nr_online < 3:
-                    self._print(f"[Active]Not enough players online ({nr_online}), not sending coords")
-                    message = message.split(' at ')[0] + " at an undisclosed location"
-                self.rcon.send_message(message)
+                if prnt:
+                    if nr_online < 3:
+                        self._print(f"[Active]Not enough players online ({nr_online}), not sending coords")
+                        message = message.split(' at ')[0] + " at an undisclosed location"
+                    self.rcon.send_message(message)
 
     def test_full(self):
         self._print("[Main]Checking for bases")

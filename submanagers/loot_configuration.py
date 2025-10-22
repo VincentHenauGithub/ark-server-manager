@@ -140,14 +140,13 @@ SADDLE_LOOT_TABLES = {
         Classes.equipment.saddles.ankylo,
         Classes.equipment.saddles.archelon,
         Classes.equipment.saddles.argentavis,
-        Classes.equipment.saddles.deinosuchus,
         Classes.equipment.saddles.bison,
         Classes.equipment.saddles.megalodon,
-        Classes.equipment.saddles.pachyrhino,
         Classes.equipment.saddles.ptero,
     ],
     "medium": [
         Classes.equipment.saddles.arthro,
+        Classes.equipment.saddles.pachyrhino,
         Classes.equipment.saddles.basilo,
         Classes.equipment.saddles.fasolasuchus,
         Classes.equipment.saddles.mantis,
@@ -159,6 +158,7 @@ SADDLE_LOOT_TABLES = {
         Classes.equipment.saddles.ceratosaurus,
     ],
     "advanced": [
+        Classes.equipment.saddles.deinosuchus,
         Classes.equipment.saddles.carbo,
         Classes.equipment.saddles.deinotherium,
         Classes.equipment.saddles.daeodon,
@@ -182,6 +182,7 @@ SADDLE_LOOT_TABLES = {
         Classes.equipment.saddles.rhynio,
         Classes.equipment.saddles.rock_golem,
         Classes.equipment.saddles.tuso,
+        Classes.equipment.saddles.helicoprion
     ],
 }
 
@@ -191,9 +192,12 @@ WEAPON_LOOT_TABLES = {
         Classes.equipment.misc.climb_pick,
         Classes.equipment.weapons.primitive.pike,
         Classes.equipment.weapons.primitive.simple_pistol,
+        Classes.equipment.weapons.primitive.whip
     ],
     "starter": [
         Classes.equipment.weapons.primitive.crossbow,
+        Classes.equipment.weapons.gathering.metal_pick,
+        Classes.equipment.weapons.gathering.metal_hatchet,
         Classes.equipment.weapons.advanced.fabricated_pistol,
         Classes.equipment.weapons.advanced.assault_rifle,
         Classes.equipment.weapons.primitive.sword,
@@ -201,13 +205,11 @@ WEAPON_LOOT_TABLES = {
         Classes.equipment.weapons.primitive.stone_club,
     ],
     "medium": [
+        Classes.equipment.weapons.advanced.chainsaw,
         Classes.equipment.misc.harpoon,
-        Classes.equipment.weapons.gathering.metal_pick,
-        Classes.equipment.weapons.gathering.metal_hatchet,
         Classes.equipment.weapons.advanced.longneck,
     ],
     "advanced": [
-        Classes.equipment.weapons.advanced.chainsaw,
         Classes.equipment.shield.riot,
         Classes.equipment.weapons.advanced.flamethrower,
     ],
@@ -222,11 +224,6 @@ ARMOR_LOOT_TABLES = {
     "starter": [
         Classes.equipment.armor.chitin.shirt,
         Classes.equipment.armor.chitin.pants,
-        Classes.equipment.armor.chitin.helmet,
-        Classes.equipment.armor.chitin.boots,
-        Classes.equipment.armor.chitin.gloves,
-        Classes.equipment.armor.ghillie.shirt,
-        Classes.equipment.armor.ghillie.pants,
         Classes.equipment.armor.ghillie.helmet,
         Classes.equipment.armor.ghillie.boots,
         Classes.equipment.armor.ghillie.gloves
@@ -288,7 +285,8 @@ LOOT_DISTRIBUTIONS = [
       "saddles": {
         "starter_only": [10.0, 19.5],
         "starter": [4.63, 12.0],
-        "medium": [1.1, 4.63]
+        "medium": [1.1, 4.63],
+        "advanced": [1.1, 2.5]
       },
       "weapons": {
         "starter_only": [225, 325],
@@ -314,7 +312,8 @@ LOOT_DISTRIBUTIONS = [
       "saddles": {
         "starter_only": [17.5, 21.3],
         "starter": [8.33, 17.59],
-        "medium": [4.63, 12.0]
+        "medium": [4.63, 12.0],
+        "advanced": [1.1, 4.63]
       },
       "weapons": {
         "starter": [250, 325],
@@ -340,7 +339,7 @@ LOOT_DISTRIBUTIONS = [
       "saddles": {
         "starter": [13.89, 21.3],
         "medium": [8.33, 17.59],
-        "advanced": [1.1, 4.63]
+        "advanced": [4.0, 7.5]
       },
       "weapons": {
         "medium": [225, 325],

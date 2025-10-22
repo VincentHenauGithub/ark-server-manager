@@ -26,8 +26,7 @@ class CommandManager(Manager):
         """Return the number of players currently online."""
         return len(self.rcon.get_active_players())
 
-    def retrieve_nr_of_dinos(self, bps: list):
-        """Return the number of dinos of specific blueprints currently online."""
+    def retrieve_nr_of_dinos(self, bps: list):     
         d_api = self.save_tracker.dino_api
         entities = d_api.get_all_filtered(tamed=False, class_names=bps)
         return len(entities)
@@ -46,16 +45,25 @@ class CommandManager(Manager):
                 if message == "?Test":
                     self.rcon.send_message(f"Test received from {entry.get_player_chat_name()}")
                 elif message == "?Giga":
-                    if self.nr_of_players < 4:
+                    if self.nr_of_players < 3:
                         self.rcon.send_message("Not enough players online for that command!")
                     else:
-                        nr_of_gigas = self.retrieve_nr_of_dinos([Classes.dinos.giganotosaurus, Classes.dinos.paleo.giga])
+                        nr_of_gigas = self.retrieve_nr_of_dinos([Classes.dinos.giganotosaurus, Classes.dinos.paleo.giga, Classes.dinos.paleo.giga2])
                         if nr_of_gigas > 0:
                             self.rcon.send_message(f"There is at least one giga")
                         else:
                             self.rcon.send_message("There are currently no gigas")
+                elif message == "?Carcha":
+                    if self.nr_of_players < 3:
+                        self.rcon.send_message("Not enough players online for that command!")
+                    else:
+                        nr_of_carchas = self.retrieve_nr_of_dinos([Classes.dinos.carcharadontosaurus])
+                        if nr_of_carchas > 0:
+                            self.rcon.send_message(f"There is at least one carcharadontosaurus")
+                        else:
+                            self.rcon.send_message("There are currently no carcharadontosauruses")
                 elif message == "?Rhynio":
-                    if self.nr_of_players < 4:
+                    if self.nr_of_players < 3:
                         self.rcon.send_message("Not enough players online for that command!")
                     else:
                         nr_of_rhynios = self.retrieve_nr_of_dinos([Classes.dinos.flyers.rhyniognatha])
@@ -63,6 +71,8 @@ class CommandManager(Manager):
                             self.rcon.send_message(f"There is at least one rhyniognatha")
                         else:
                             self.rcon.send_message("There are currently no rhyniognathas")
+                elif message == "?Rigged":
+                    self.rcon.send_message("The game is rigged against Alex")
                 elif message == "?Titan":
                     if self.nr_of_players < 2:
                         self.rcon.send_message("Not enough players online for that command!")
