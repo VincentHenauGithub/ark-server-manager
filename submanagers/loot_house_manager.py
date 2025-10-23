@@ -134,7 +134,7 @@ class LootHouseManager(Manager):
             base: Base = b_api.get_base_at(self.state.coordinates, radius=0.1, owner_tribe_name="The administration")
 
             vault: StructureWithInventory = None
-            if base is not None:
+            if base is not None and base.structures is not None and len(base.structures) > 0:
                 for _, structure in base.structures.items():
                     if structure.object.blueprint == Classes.structures.placed.utility.vault:
                         vault = structure
